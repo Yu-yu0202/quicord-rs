@@ -38,7 +38,6 @@ async fn ping(ctx: InteractionContext) -> anyhow::Result<()> {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let bot = BotBuilder::new("YOUR_BOT_TOKEN")
-        .add_command(ping)
         .build()
         .await?;
 

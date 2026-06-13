@@ -1,0 +1,17 @@
+[package]
+name = "quicord-rs"
+version = "0.1.0"
+edition = "2024"
+autoexamples = true
+
+[features]
+default = ["macros"]
+macros = ["quicord-rs-macros"]
+
+[dependencies]
+anyhow = "1.0.102"
+linkme = "0.3.36"
+
+quicord-rs-macros = { version = "0.1.0", path = "../quicord-rs-macros", optional = true }
+quicord-rs-main = { version = "0.1.0", path = "../quicord-rs-main" }
+tokio = { version = "1.52.3", features = ["rt", "rt-multi-thread", "macros"] }

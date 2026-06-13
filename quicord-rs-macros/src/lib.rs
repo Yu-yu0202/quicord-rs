@@ -9,12 +9,13 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::{format_ident, quote};
 use syn::{
-    parse::{Parse, ParseStream}, parse_macro_input, punctuated::Punctuated, Error, Expr, ExprCall, ExprLit, ExprPath, ItemFn, Lit, LitStr, Meta,
-    Path,
-    Result,
-    Token,
+    Error, Expr, ExprCall, ExprLit, ExprPath, ItemFn, Lit, LitStr, Meta, Path, Result, Token,
+    parse::{Parse, ParseStream},
+    parse_macro_input,
+    punctuated::Punctuated,
 };
 
+/// Parsed arguments accepted by the command attribute macros.
 struct CommandArgs {
     name: Option<LitStr>,
     description: Option<LitStr>,
@@ -22,11 +23,15 @@ struct CommandArgs {
     options: Option<Vec<CommandOptionSpec>>,
 }
 
+/// Command registration scope parsed from the attribute input.
 enum ScopeArg {
+    /// Register globally.
     Global,
+    /// Register for the listed guild IDs.
     Guild(Vec<LitStr>),
 }
 
+/// Parsed metadata for a single slash command option.
 struct CommandOptionSpec {
     kind: CommandOptionKind,
     name: LitStr,
@@ -34,6 +39,7 @@ struct CommandOptionSpec {
     required: bool,
 }
 
+/// Supported slash command option kinds.
 enum CommandOptionKind {
     Attachment,
     Boolean,
@@ -47,6 +53,7 @@ enum CommandOptionKind {
 }
 
 impl Parse for CommandArgs {
+    /// Parses `key = value` pairs from the attribute input.
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         let args = Punctuated::<Meta, Token![,]>::parse_terminated(input)?;
         let mut parsed = CommandArgs {
@@ -96,6 +103,7 @@ impl Parse for CommandArgs {
     }
 }
 
+/// Attribute macro that registers a slash command.
 #[proc_macro_attribute]
 pub fn slash_command(attr: TokenStream, item: TokenStream) -> TokenStream {
     expand_command(
@@ -106,6 +114,7 @@ pub fn slash_command(attr: TokenStream, item: TokenStream) -> TokenStream {
     .into()
 }
 
+/// Attribute macro that registers a message context command.
 #[proc_macro_attribute]
 pub fn message_context(attr: TokenStream, item: TokenStream) -> TokenStream {
     expand_command(
@@ -116,6 +125,7 @@ pub fn message_context(attr: TokenStream, item: TokenStream) -> TokenStream {
     .into()
 }
 
+/// Attribute macro that registers a user context command.
 #[proc_macro_attribute]
 pub fn user_context(attr: TokenStream, item: TokenStream) -> TokenStream {
     expand_command(
@@ -126,12 +136,17 @@ pub fn user_context(attr: TokenStream, item: TokenStream) -> TokenStream {
     .into()
 }
 
+/// Discriminant used while expanding a command handler.
 enum CommandKind {
+    /// Slash command expansion.
     Slash,
+    /// Message context command expansion.
     MessageContext,
+    /// User context command expansion.
     UserContext,
 }
 
+/// Validates the input and dispatches to the correct expansion routine.
 fn expand_command(
     args: CommandArgs,
     item_fn: ItemFn,
@@ -149,6 +164,7 @@ fn expand_command(
     }
 }
 
+/// Expands a slash command handler into a handler function and metadata entry.
 fn expand_slash_command(args: CommandArgs, item_fn: ItemFn) -> proc_macro2::TokenStream {
     let (name, description, scope) = match (
         required(args.name, "name", Span::call_site()),
@@ -192,11 +208,15 @@ fn expand_slash_command(args: CommandArgs, item_fn: ItemFn) -> proc_macro2::Toke
     }
 }
 
+/// Distinguishes the two supported context command kinds.
 enum ContextKind {
+    /// Message context command.
     Message,
+    /// User context command.
     User,
 }
 
+/// Expands a context command handler into a handler function and metadata entry.
 fn expand_context_command(
     args: CommandArgs,
     item_fn: ItemFn,
@@ -282,6 +302,7 @@ fn expand_context_command(
     }
 }
 
+/// Emits a duplicate-attribute error when the field is already set.
 fn reject_duplicate<T>(current: &Option<T>, span: Span, key: &str) -> Result<()> {
     if current.is_some() {
         Err(Error::new(span, format!("duplicate `{key}` attribute")))
@@ -290,10 +311,12 @@ fn reject_duplicate<T>(current: &Option<T>, span: Span, key: &str) -> Result<()>
     }
 }
 
+/// Emits a missing-attribute error for a required field.
 fn required<T>(value: Option<T>, key: &str, span: Span) -> Result<T> {
     value.ok_or_else(|| Error::new(span, format!("missing `{key}` attribute")))
 }
 
+/// Parses a string literal expression.
 fn parse_string_literal(expr: Expr, key: &str) -> Result<LitStr> {
     match expr {
         Expr::Lit(ExprLit {
@@ -307,6 +330,7 @@ fn parse_string_literal(expr: Expr, key: &str) -> Result<LitStr> {
     }
 }
 
+/// Parses the `scope` attribute value.
 fn parse_scope(expr: Expr) -> Result<ScopeArg> {
     match expr {
         Expr::Path(ExprPath { path, .. }) if path_is_ident(&path, "global") => Ok(ScopeArg::Global),
@@ -340,6 +364,7 @@ fn parse_scope(expr: Expr) -> Result<ScopeArg> {
     }
 }
 
+/// Parses an array of command option specs.
 fn parse_options(expr: Expr) -> Result<Vec<CommandOptionSpec>> {
     match expr {
         Expr::Array(array) => array
@@ -351,6 +376,7 @@ fn parse_options(expr: Expr) -> Result<Vec<CommandOptionSpec>> {
     }
 }
 
+/// Parses a single command option spec constructor.
 fn parse_option_spec(expr: Expr) -> Result<CommandOptionSpec> {
     let Expr::Call(ExprCall { func, args, .. }) = expr else {
         return Err(Error::new_spanned(
@@ -412,6 +438,7 @@ fn parse_option_spec(expr: Expr) -> Result<CommandOptionSpec> {
     })
 }
 
+/// Converts an identifier path into a supported option kind.
 fn parse_option_kind(path: &Path) -> Result<CommandOptionKind> {
     if path_is_ident(path, "Attachment") {
         Ok(CommandOptionKind::Attachment)
@@ -439,6 +466,7 @@ fn parse_option_kind(path: &Path) -> Result<CommandOptionKind> {
     }
 }
 
+/// Parses a boolean literal expression.
 fn parse_bool_literal(expr: Expr, key: &str) -> Result<bool> {
     match expr {
         Expr::Lit(ExprLit {
@@ -452,10 +480,12 @@ fn parse_bool_literal(expr: Expr, key: &str) -> Result<bool> {
     }
 }
 
+/// Returns whether the path is exactly the provided identifier.
 fn path_is_ident(path: &Path, ident: &str) -> bool {
     path.leading_colon.is_none() && path.segments.len() == 1 && path.segments[0].ident == ident
 }
 
+/// Converts parsed scope information into generated tokens.
 fn scope_tokens(scope: ScopeArg) -> proc_macro2::TokenStream {
     match scope {
         ScopeArg::Global => quote! {
@@ -467,6 +497,7 @@ fn scope_tokens(scope: ScopeArg) -> proc_macro2::TokenStream {
     }
 }
 
+/// Converts parsed slash option metadata into generated tokens.
 fn option_tokens(options: Vec<CommandOptionSpec>) -> proc_macro2::TokenStream {
     let options = options.into_iter().map(|option| {
         let kind = option_kind_tokens(option.kind);
@@ -491,6 +522,7 @@ fn option_tokens(options: Vec<CommandOptionSpec>) -> proc_macro2::TokenStream {
     }
 }
 
+/// Converts a parsed option kind into generated tokens.
 fn option_kind_tokens(kind: CommandOptionKind) -> proc_macro2::TokenStream {
     match kind {
         CommandOptionKind::Attachment => {
@@ -523,6 +555,7 @@ fn option_kind_tokens(kind: CommandOptionKind) -> proc_macro2::TokenStream {
     }
 }
 
+/// Combines multiple parser errors into a single compile error.
 fn combine_errors(errors: impl IntoIterator<Item = Option<Error>>) -> proc_macro2::TokenStream {
     let mut combined: Option<Error> = None;
 

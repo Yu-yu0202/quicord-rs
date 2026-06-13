@@ -5,8 +5,11 @@
  * https://mozilla.org/MPL/2.0/.
  */
 
+/// Scope used when registering commands with Discord.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum CommandScope {
+    /// Register the command globally.
     Global,
+    /// Register the command for the listed guild IDs only.
     Guild(&'static [&'static str]),
 }

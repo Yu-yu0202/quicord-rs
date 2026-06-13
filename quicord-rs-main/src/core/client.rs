@@ -9,14 +9,14 @@ use crate::util::logger::init_logger;
 use crate::{
     command::{
         context::{
-            MessageContextCommandMetadata, UserContextCommandMetadata, MESSAGE_CONTEXT_COMMANDS,
-            USER_CONTEXT_COMMANDS,
+            MESSAGE_CONTEXT_COMMANDS, MessageContextCommandMetadata, USER_CONTEXT_COMMANDS,
+            UserContextCommandMetadata,
         },
         scope::CommandScope,
-        slash::{SlashCommandMetadata, SLASH_COMMANDS},
+        slash::{SLASH_COMMANDS, SlashCommandMetadata},
     },
     core::{
-        event::{EventContext, EventHandlerMetadata, EVENT_HANDLERS},
+        event::{EVENT_HANDLERS, EventContext, EventHandlerMetadata},
         interaction::InteractionContext,
     },
     util::static_router::StaticRouter,
@@ -24,7 +24,7 @@ use crate::{
 use anyhow::Result;
 use rustc_hash::{FxBuildHasher, FxHashMap};
 use std::sync::Arc;
-use tokio::signal::unix::{signal, SignalKind};
+use tokio::signal::unix::{SignalKind, signal};
 use tracing::{debug, error, info, warn};
 use twilight_gateway::{ConfigBuilder, EventTypeFlags, Intents, Shard, StreamExt};
 use twilight_http::Client as HttpClient;
@@ -34,39 +34,53 @@ use twilight_model::{
         command::{Command, CommandOption, CommandType},
         interaction::InteractionData,
     },
-    gateway::{event::Event, ShardId},
-    id::{marker::ApplicationMarker, Id},
+    gateway::{ShardId, event::Event},
+    id::{Id, marker::ApplicationMarker},
 };
 use twilight_util::builder::command::CommandBuilder;
 
+/// Guild ID to command list mapping used while registering commands.
 type GuildCommandMap = FxHashMap<&'static str, Vec<Command>>;
 
+/// One-time initializer guard for rustls.
 static INIT_RUSTLS: std::sync::Once = std::sync::Once::new();
 
+/// Installs the default rustls crypto provider once per process.
 fn init_rustls() -> () {
     INIT_RUSTLS.call_once(|| {
         let _ = rustls::crypto::ring::default_provider().install_default();
     });
 }
 
+/// Routed handler resolved from an incoming event.
 pub enum RoutedHandler {
+    /// A gateway event handler.
     Event(&'static EventHandlerMetadata),
+    /// A slash command handler.
     Slash(&'static SlashCommandMetadata),
+    /// A user context command handler.
     UserContext(&'static UserContextCommandMetadata),
+    /// A message context command handler.
     MessageContext(&'static MessageContextCommandMetadata),
 }
 
+/// Shared HTTP client wrapper used by the bot runtime.
 #[derive(Clone)]
 pub struct Client {
+    /// The underlying Twilight HTTP client.
     pub http: Arc<HttpClient>,
 }
 
+/// Builder used to construct a [`Bot`].
 pub struct BotBuilder {
     token: String,
 }
 
+/// Bot runtime state and routing tables.
 pub struct Bot {
+    /// Shared client access for handlers.
     pub client: Client,
+    /// The application ID resolved from Discord.
     pub application_id: Id<ApplicationMarker>,
     pub(crate) shard: Shard,
 
@@ -76,18 +90,21 @@ pub struct Bot {
     message_context_router: StaticRouter<&'static str, MessageContextCommandMetadata>,
 }
 
+/// Pending command registrations grouped by scope.
 struct PendingCommands {
     global: Vec<Command>,
     guild: GuildCommandMap,
 }
 
 impl Client {
+    /// Creates a new client wrapper from an HTTP client.
     pub(crate) fn new(http: Arc<HttpClient>) -> Self {
         Self { http }
     }
 }
 
 impl PendingCommands {
+    /// Creates an empty command collection.
     fn new() -> Self {
         Self {
             global: Vec::new(),
@@ -95,10 +112,12 @@ impl PendingCommands {
         }
     }
 
+    /// Returns whether no commands are queued for registration.
     fn is_empty(&self) -> bool {
         self.global.is_empty() && self.guild.is_empty()
     }
 
+    /// Adds a command to the appropriate scope buckets.
     fn push(&mut self, scope: CommandScope, command: Command) {
         match scope {
             CommandScope::Global => self.global.push(command),
@@ -115,16 +134,19 @@ impl PendingCommands {
 }
 
 impl BotBuilder {
+    /// Creates a new builder using the provided bot token.
     pub fn new(token: impl Into<String>) -> Self {
         Self {
             token: token.into(),
         }
     }
 
+    /// Clones the builder state into a fresh builder.
     pub fn share(self) -> BotBuilder {
         BotBuilder { token: self.token }
     }
 
+    /// Builds a bot by connecting to Discord and preparing routers.
     pub async fn build(self) -> Result<Bot> {
         init_rustls();
 
@@ -157,10 +179,12 @@ impl BotBuilder {
 }
 
 impl Bot {
+    /// Constructs a bot from the provided builder.
     pub async fn new(config: BotBuilder) -> Result<Self> {
         Ok(config.build().await?)
     }
 
+    /// Registers commands and runs the event loop on the current task.
     pub async fn start(mut self) -> Result<()> {
         init_rustls();
         init_logger();
@@ -171,6 +195,7 @@ impl Bot {
         self.event_loop().await
     }
 
+    /// Registers commands and spawns the event loop on a background task.
     pub async fn spawn(mut self) -> Result<()> {
         init_rustls();
         init_logger();
@@ -191,6 +216,7 @@ impl Bot {
         Ok(())
     }
 
+    /// Builds and uploads all registered commands to Discord.
     async fn register_commands(&self) -> Result<()> {
         let mut commands = PendingCommands::new();
 
@@ -263,6 +289,7 @@ impl Bot {
         Ok(())
     }
 
+    /// Runs the gateway event loop until termination or shutdown.
     async fn event_loop(&mut self) -> Result<()> {
         info!("Starting event loop...");
 
@@ -312,6 +339,7 @@ impl Bot {
         Ok(())
     }
 
+    /// Retrieves the next gateway event, retrying transient receive errors.
     async fn next_event(&mut self) -> Option<Event> {
         loop {
             match self.shard.next_event(EventTypeFlags::all()).await {
@@ -325,6 +353,7 @@ impl Bot {
         }
     }
 
+    /// Dispatches a routed event to the associated handler.
     async fn handle_routed_event(client: Client, handler: RoutedHandler, event: Event) {
         match handler {
             RoutedHandler::Event(event_meta) => {
@@ -381,6 +410,7 @@ impl Bot {
         }
     }
 
+    /// Resolves an incoming event into a registered handler, if any.
     pub fn route_event(&self, event: &Event) -> Option<RoutedHandler> {
         if let Event::InteractionCreate(interaction) = event {
             if let Some(InteractionData::ApplicationCommand(ref cmd)) = interaction.data {
@@ -391,6 +421,7 @@ impl Bot {
         self.route_gateway_event(event)
     }
 
+    /// Resolves a Discord application command into a command handler.
     fn route_application_command(
         &self,
         command_type: CommandType,
@@ -410,6 +441,7 @@ impl Bot {
         }
     }
 
+    /// Resolves a gateway event into a gateway event handler.
     fn route_gateway_event(&self, event: &Event) -> Option<RoutedHandler> {
         event
             .kind()

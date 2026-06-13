@@ -5,8 +5,9 @@
  * https://mozilla.org/MPL/2.0/.
  */
 
-use tracing_subscriber::{fmt, prelude::*, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
+/// Initializes the global tracing subscriber.
 pub fn init_logger() {
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
 

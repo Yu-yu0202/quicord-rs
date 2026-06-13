@@ -8,13 +8,16 @@
 use rustc_hash::FxBuildHasher;
 use std::{borrow::Borrow, collections::HashMap, hash::Hash};
 
+/// Hash map alias using `FxBuildHasher`.
 pub type FxHashMap<K, V> = HashMap<K, V, FxBuildHasher>;
 
+/// A static lookup table from keys to leaked metadata.
 pub struct StaticRouter<K: 'static + Hash + Eq, V: 'static> {
     table: FxHashMap<K, &'static V>,
 }
 
 impl<K: 'static + Hash + Eq, V: 'static> StaticRouter<K, V> {
+    /// Builds a router from a set of static items and a key extractor.
     pub fn new<I>(items: I, key_extractor: fn(&'static V) -> K) -> Self
     where
         I: IntoIterator<Item = &'static V>,
@@ -29,6 +32,7 @@ impl<K: 'static + Hash + Eq, V: 'static> StaticRouter<K, V> {
         Self { table }
     }
 
+    /// Looks up an item by key.
     pub fn get<Q>(&self, key: &Q) -> Option<&'static V>
     where
         K: Borrow<Q>,

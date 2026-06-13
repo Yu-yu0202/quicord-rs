@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 use quicord_rs::macros::slash_command;
 use quicord_rs::{BotBuilder, InteractionContext};
 

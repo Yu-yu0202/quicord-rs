@@ -1,15 +1,22 @@
+/*
+ * This Source Code Form is subject to the terms of the
+ * Mozilla Public License, v. 2.0. If a copy of the MPL
+ * was not distributed with this file, You can obtain one at
+ * https://mozilla.org/MPL/2.0/.
+ */
+
 use crate::util::logger::init_logger;
 use crate::{
     command::{
         context::{
-            MESSAGE_CONTEXT_COMMANDS, MessageContextCommandMetadata, USER_CONTEXT_COMMANDS,
-            UserContextCommandMetadata,
+            MessageContextCommandMetadata, UserContextCommandMetadata, MESSAGE_CONTEXT_COMMANDS,
+            USER_CONTEXT_COMMANDS,
         },
         scope::CommandScope,
-        slash::{SLASH_COMMANDS, SlashCommandMetadata},
+        slash::{SlashCommandMetadata, SLASH_COMMANDS},
     },
     core::{
-        event::{EVENT_HANDLERS, EventContext, EventHandlerMetadata},
+        event::{EventContext, EventHandlerMetadata, EVENT_HANDLERS},
         interaction::InteractionContext,
     },
     util::static_router::StaticRouter,
@@ -17,7 +24,7 @@ use crate::{
 use anyhow::Result;
 use rustc_hash::{FxBuildHasher, FxHashMap};
 use std::sync::Arc;
-use tokio::signal::unix::{SignalKind, signal};
+use tokio::signal::unix::{signal, SignalKind};
 use tracing::{debug, error, info, warn};
 use twilight_gateway::{ConfigBuilder, EventTypeFlags, Intents, Shard, StreamExt};
 use twilight_http::Client as HttpClient;
@@ -27,8 +34,8 @@ use twilight_model::{
         command::{Command, CommandOption, CommandType},
         interaction::InteractionData,
     },
-    gateway::{ShardId, event::Event},
-    id::{Id, marker::ApplicationMarker},
+    gateway::{event::Event, ShardId},
+    id::{marker::ApplicationMarker, Id},
 };
 use twilight_util::builder::command::CommandBuilder;
 

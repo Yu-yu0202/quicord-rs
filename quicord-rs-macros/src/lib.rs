@@ -1,11 +1,18 @@
+/*
+ * This Source Code Form is subject to the terms of the
+ * Mozilla Public License, v. 2.0. If a copy of the MPL
+ * was not distributed with this file, You can obtain one at
+ * https://mozilla.org/MPL/2.0/.
+ */
+
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::{format_ident, quote};
 use syn::{
-    Error, Expr, ExprCall, ExprLit, ExprPath, ItemFn, Lit, LitStr, Meta, Path, Result, Token,
-    parse::{Parse, ParseStream},
-    parse_macro_input,
-    punctuated::Punctuated,
+    parse::{Parse, ParseStream}, parse_macro_input, punctuated::Punctuated, Error, Expr, ExprCall, ExprLit, ExprPath, ItemFn, Lit, LitStr, Meta,
+    Path,
+    Result,
+    Token,
 };
 
 struct CommandArgs {

@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2024"
 license = "MPL-2"
 autoexamples = true
+description = "A Rust library for creating Discord bots"
+repository = "https://github.com/Yu-yu0202/quicord-rs"
+readme = "../README.md"
+authors = ["Yu-yu0202"]
 
 [features]
 default = ["macros"]

@@ -2,7 +2,7 @@
 name = "quicord-rs-macros"
 version = "0.1.0"
 edition = "2024"
-license = "MPL-2"
+license = "MPL-2.0"
 description = "A Rust library for creating Discord bots"
 repository = "https://github.com/Yu-yu0202/quicord-rs"
 readme = "../README.md"

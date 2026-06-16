@@ -6,7 +6,7 @@
  */
 
 use proc_macro::TokenStream;
-use syn::{ItemFn, parse_macro_input};
+use syn::{parse_macro_input, ItemFn};
 
 mod args;
 mod expand;
@@ -40,6 +40,16 @@ pub fn user_context(attr: TokenStream, item: TokenStream) -> TokenStream {
         parse_macro_input!(attr as args::CommandArgs),
         parse_macro_input!(item as ItemFn),
         expand::CommandKind::UserContext,
+    )
+    .into()
+}
+
+/// Attribute macro that registers a gateway event handler.
+#[proc_macro_attribute]
+pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
+    expand::event(
+        parse_macro_input!(attr as args::EventArgs),
+        parse_macro_input!(item as ItemFn),
     )
     .into()
 }

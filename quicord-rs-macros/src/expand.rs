@@ -9,7 +9,7 @@ use proc_macro2::Span;
 use quote::{format_ident, quote};
 use syn::{Error, ItemFn, Result};
 
-use crate::args::{CommandArgs, CommandOptionKind, CommandOptionSpec, ScopeArg};
+use crate::args::{CommandArgs, CommandOptionKind, CommandOptionSpec, EventArgs, ScopeArg};
 
 /// Discriminant used while expanding a command handler.
 pub(crate) enum CommandKind {
@@ -36,6 +36,42 @@ pub(crate) fn command(
         CommandKind::Slash => slash_command(args, item_fn),
         CommandKind::MessageContext => context_command(args, item_fn, ContextKind::Message),
         CommandKind::UserContext => context_command(args, item_fn, ContextKind::User),
+    }
+}
+
+/// Validates the input and dispatches to the event handler expansion routine.
+pub(crate) fn event(args: EventArgs, item_fn: ItemFn) -> proc_macro2::TokenStream {
+    let event_type = match required(args.event_type, "event", Span::call_site()) {
+        Ok(event_type) => event_type,
+        Err(err) => return err.to_compile_error(),
+    };
+    let once = args.once.unwrap_or(false);
+
+    let event_type_upper = event_type.value().to_uppercase();
+    let event_type = syn::LitStr::new(&event_type_upper, event_type.span());
+
+    let handler_name = item_fn.sig.ident.clone();
+    let handler_fn = format_ident!("__quicord_rs_{}_event_handler", handler_name);
+    let metadata = format_ident!(
+        "__QUICORD_RS_{}_EVENT__",
+        handler_name.to_string().to_uppercase()
+    );
+
+    quote! {
+        #item_fn
+
+        fn #handler_fn(
+            ctx: ::quicord_rs::core::event::EventContext
+        ) -> ::quicord_rs::core::event::EventFuture {
+            ::std::boxed::Box::pin(#handler_name(ctx))
+        }
+
+        #[quicord_rs::linkme::distributed_slice(::quicord_rs::core::event::EVENT_HANDLERS)]
+        static #metadata: ::quicord_rs::core::event::EventHandlerMetadata = ::quicord_rs::core::event::EventHandlerMetadata {
+            event_type: #event_type,
+            handler: #handler_fn,
+            once: #once,
+        };
     }
 }
 

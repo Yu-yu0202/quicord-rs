@@ -8,9 +8,11 @@
 use crate::core::client::Client;
 use twilight_model::gateway::event::Event;
 
-/// Asynchronous handler signature for gateway events.
-pub type EventHandler =
-    fn(EventContext) -> futures_util::future::BoxFuture<'static, anyhow::Result<()>>;
+/// Future returned by event handlers.
+pub type EventFuture = futures_util::future::BoxFuture<'static, anyhow::Result<()>>;
+
+/// Function signature used by generated event handlers.
+pub type EventHandler = fn(EventContext) -> EventFuture;
 
 /// Context passed to event handlers.
 #[derive(Clone)]

@@ -7,10 +7,16 @@
 
 use proc_macro2::Span;
 use syn::{
-    Error, Expr, ExprCall, ExprLit, ExprPath, Lit, LitStr, Meta, Path, Result, Token,
-    parse::{Parse, ParseStream},
-    punctuated::Punctuated,
+    parse::{Parse, ParseStream}, punctuated::Punctuated, Error, Expr, ExprCall, ExprLit, ExprPath, Lit, LitStr, Meta, Path,
+    Result,
+    Token,
 };
+
+/// Parsed arguments for event attributes.
+pub(crate) struct EventArgs {
+    pub(crate) event_type: Option<LitStr>,
+    pub(crate) once: Option<bool>,
+}
 
 /// Parsed arguments accepted by the command attribute macros.
 pub(crate) struct CommandArgs {
@@ -86,6 +92,46 @@ impl Parse for CommandArgs {
                 "options" => {
                     reject_duplicate(&parsed.options, ident.span(), "options")?;
                     parsed.options = Some(parse_options(name_value.value)?);
+                }
+                other => {
+                    return Err(Error::new_spanned(
+                        ident,
+                        format!("unknown command attribute `{other}`"),
+                    ));
+                }
+            }
+        }
+
+        Ok(parsed)
+    }
+}
+
+impl Parse for EventArgs {
+    /// Parses `key = value` pairs from the attribute input.
+    fn parse(input: ParseStream<'_>) -> Result<Self> {
+        let args = Punctuated::<Meta, Token![,]>::parse_terminated(input)?;
+        let mut parsed = EventArgs {
+            event_type: None,
+            once: None,
+        };
+
+        for arg in args {
+            let Meta::NameValue(name_value) = arg else {
+                return Err(Error::new_spanned(arg, "expected `key = value`"));
+            };
+
+            let Some(ident) = name_value.path.get_ident() else {
+                return Err(Error::new_spanned(name_value.path, "expected simple key"));
+            };
+
+            match ident.to_string().as_str() {
+                "event" => {
+                    reject_duplicate(&parsed.event_type, ident.span(), "event")?;
+                    parsed.event_type = Some(parse_string_literal(name_value.value, "event")?);
+                }
+                "once" => {
+                    reject_duplicate(&parsed.once, ident.span(), "once")?;
+                    parsed.once = Some(parse_bool_literal(name_value.value, "once")?);
                 }
                 other => {
                     return Err(Error::new_spanned(

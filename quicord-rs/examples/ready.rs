@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: CC0-1.0
 
-use quicord_rs::core::event::EventContext;
 use quicord_rs::macros::event;
-use quicord_rs_main::BotBuilder;
+use quicord_rs::{BotBuilder, EventContext};
 
 #[event(event = "ready", once = true)]
 async fn on_ready(_ctx: EventContext) -> anyhow::Result<()> {

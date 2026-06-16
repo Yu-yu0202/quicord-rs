@@ -685,7 +685,7 @@ dependencies = [
 
 [[package]]
 name = "quicord-rs"
-version = "0.1.1"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "linkme",
@@ -696,7 +696,7 @@ dependencies = [
 
 [[package]]
 name = "quicord-rs-macros"
-version = "0.1.1"
+version = "0.2.1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -705,7 +705,7 @@ dependencies = [
 
 [[package]]
 name = "quicord-rs-main"
-version = "0.1.1"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "futures-util",

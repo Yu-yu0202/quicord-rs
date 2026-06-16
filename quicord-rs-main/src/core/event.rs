@@ -34,6 +34,8 @@ pub struct EventHandlerMetadata {
     pub event_type: &'static str,
     /// The handler invoked for the event.
     pub handler: EventHandler,
+    /// Whether the handler should only be executed once.
+    pub once: bool,
 }
 
 /// Distributed slice of all registered gateway event handlers.

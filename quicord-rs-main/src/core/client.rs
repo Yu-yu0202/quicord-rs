@@ -4,27 +4,28 @@
  * was not distributed with this file, You can obtain one at
  * https://mozilla.org/MPL/2.0/.
  */
-
 use crate::util::logger::init_logger;
 use crate::{
     command::{
         context::{
-            MESSAGE_CONTEXT_COMMANDS, MessageContextCommandMetadata, USER_CONTEXT_COMMANDS,
-            UserContextCommandMetadata,
+            MessageContextCommandMetadata, UserContextCommandMetadata, MESSAGE_CONTEXT_COMMANDS,
+            USER_CONTEXT_COMMANDS,
         },
         scope::CommandScope,
-        slash::{SLASH_COMMANDS, SlashCommandMetadata},
+        slash::{SlashCommandMetadata, SLASH_COMMANDS},
     },
     core::{
-        event::{EVENT_HANDLERS, EventContext, EventHandlerMetadata},
+        event::{EventContext, EventHandlerMetadata, EVENT_HANDLERS},
         interaction::InteractionContext,
     },
     util::static_router::StaticRouter,
 };
 use anyhow::Result;
+use lazy_static::lazy_static;
 use rustc_hash::{FxBuildHasher, FxHashMap};
-use std::sync::Arc;
-use tokio::signal::unix::{SignalKind, signal};
+use std::collections::HashSet;
+use std::sync::{Arc, Mutex};
+use tokio::signal::unix::{signal, SignalKind};
 use tracing::{debug, error, info, warn};
 use twilight_gateway::{ConfigBuilder, EventTypeFlags, Intents, Shard, StreamExt};
 use twilight_http::Client as HttpClient;
@@ -34,8 +35,8 @@ use twilight_model::{
         command::{Command, CommandOption, CommandType},
         interaction::InteractionData,
     },
-    gateway::{ShardId, event::Event},
-    id::{Id, marker::ApplicationMarker},
+    gateway::{event::Event, ShardId},
+    id::{marker::ApplicationMarker, Id},
 };
 use twilight_util::builder::command::CommandBuilder;
 
@@ -50,6 +51,10 @@ fn init_rustls() -> () {
     INIT_RUSTLS.call_once(|| {
         let _ = rustls::crypto::ring::default_provider().install_default();
     });
+}
+
+lazy_static! {
+    static ref EXECUTED_ONCE_EVENT_HANDLERS: Mutex<HashSet<usize>> = Mutex::new(HashSet::new());
 }
 
 /// Routed handler resolved from an incoming event.
@@ -357,6 +362,22 @@ impl Bot {
     async fn handle_routed_event(client: Client, handler: RoutedHandler, event: Event) {
         match handler {
             RoutedHandler::Event(event_meta) => {
+                let handler_id = event_meta.handler as usize;
+
+                if event_meta.once {
+                    let mut executed = EXECUTED_ONCE_EVENT_HANDLERS
+                        .lock()
+                        .expect("Failed to access executed handlers list");
+
+                    if executed.contains(&handler_id) {
+                        drop(executed);
+                        return;
+                    }
+
+                    executed.insert(handler_id);
+                    drop(executed);
+                }
+
                 info!("Handling event: {}", event_meta.event_type);
                 let context = EventContext::new(client, event);
                 if let Err(e) = (event_meta.handler)(context).await {

@@ -21,3 +21,4 @@ twilight-model = "0.17.1"
 twilight-util = { version = "0.17.0", features = ["builder"] }
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt"] }
 tracing = "0.1.44"
+lazy_static = "1.5.0"

@@ -16,5 +16,8 @@ pub mod interaction;
 
 /// Primary bot runtime type.
 pub use client::{Bot, BotBuilder};
+/// Event context passed to event handlers.
+pub use event::EventContext;
 /// Context passed to interaction handlers.
 pub use interaction::InteractionContext;
+

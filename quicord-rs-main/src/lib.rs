@@ -15,13 +15,15 @@ pub mod command;
 pub mod core;
 
 /// Reexports of the primary bot types from [`core`].
-pub use core::{Bot, BotBuilder, InteractionContext};
+pub use core::{Bot, BotBuilder, EventContext, InteractionContext};
+
 
 /// Utility helpers used internally by the runtime.
 pub mod util;
 
 /// Reexport of the `linkme` crate used for distributed slices.
 pub use linkme;
+
 
 /// Reexports commonly used tracing macros.
 pub mod log {

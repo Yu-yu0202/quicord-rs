@@ -1,11 +1,13 @@
 /*
+ * Copyright (c) 2026 Yu-yu0202
+ *
  * This Source Code Form is subject to the terms of the
  * Mozilla Public License, v. 2.0. If a copy of the MPL
  * was not distributed with this file, You can obtain one at
  * https://mozilla.org/MPL/2.0/.
  */
 
-use crate::command::{CommandHandler, scope::CommandScope};
+use crate::command::{scope::CommandScope, CommandHandler};
 
 /// Metadata describing a registered user context command.
 pub struct UserContextCommandMetadata {

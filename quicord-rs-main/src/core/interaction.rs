@@ -1,4 +1,6 @@
 /*
+ * Copyright (c) 2026 Yu-yu0202
+ *
  * This Source Code Form is subject to the terms of the
  * Mozilla Public License, v. 2.0. If a copy of the MPL
  * was not distributed with this file, You can obtain one at
@@ -12,26 +14,26 @@ use twilight_model::{
     application::{
         command::CommandOptionType,
         interaction::{
-            Interaction, InteractionData,
-            application_command::{CommandData, CommandDataOption, CommandOptionValue},
-            message_component::MessageComponentInteractionData,
+            application_command::{CommandData, CommandDataOption, CommandOptionValue}, message_component::MessageComponentInteractionData,
             modal::ModalInteractionData,
+            Interaction,
+            InteractionData,
         },
     },
-    channel::{Channel, Message, message::MessageFlags},
+    channel::{message::MessageFlags, Channel, Message},
     gateway::event::Event,
     http::interaction::{InteractionResponse, InteractionResponseData, InteractionResponseType},
     id::{
-        Id,
         marker::{
             AttachmentMarker, ChannelMarker, GenericMarker, GuildMarker, InteractionMarker,
             RoleMarker, UserMarker,
         },
+        Id,
     },
     user::User,
 };
-pub use twilight_util::builder::InteractionResponseDataBuilder as InteractionResponseBuilder;
 pub use twilight_util::builder::embed::EmbedBuilder;
+pub use twilight_util::builder::InteractionResponseDataBuilder as InteractionResponseBuilder;
 
 /// Converts a value into a Discord interaction response payload.
 pub trait IntoResponse {

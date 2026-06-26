@@ -418,6 +418,7 @@ impl Bot {
             RoutedHandler::Slash(command_meta) => {
                 info!("Handling slash command: /{}", command_meta.name);
                 let context = InteractionContext::new(client, event);
+                log_executor_info(&context);
                 if let Err(e) = (command_meta.run)(context).await {
                     warn!(
                         "Error handling slash command {}: {:?}",
@@ -430,6 +431,7 @@ impl Bot {
             RoutedHandler::UserContext(command_meta) => {
                 info!("Handling user context command: {}", command_meta.name);
                 let context = InteractionContext::new(client, event);
+                log_executor_info(&context);
                 if let Err(e) = (command_meta.run)(context).await {
                     warn!(
                         "Error handling user context command {}: {:?}",
@@ -445,6 +447,7 @@ impl Bot {
             RoutedHandler::MessageContext(command_meta) => {
                 info!("Handling message context command: {}", command_meta.name);
                 let context = InteractionContext::new(client, event);
+                log_executor_info(&context);
                 if let Err(e) = (command_meta.run)(context).await {
                     warn!(
                         "Error handling message context command {}: {:?}",
@@ -460,6 +463,7 @@ impl Bot {
             RoutedHandler::Modal(modal_meta) => {
                 info!("Handling modal submission: {}", modal_meta.custom_id);
                 let context = InteractionContext::new(client, event);
+                log_executor_info(&context);
                 if let Err(e) = (modal_meta.run)(context).await {
                     warn!(
                         "Error handling modal submission {}: {:?}",
@@ -475,6 +479,7 @@ impl Bot {
             RoutedHandler::Button(button_meta) => {
                 info!("Handling button interaction: {}", button_meta.custom_id);
                 let context = InteractionContext::new(client, event);
+                log_executor_info(&context);
                 if let Err(e) = (button_meta.run)(context).await {
                     warn!(
                         "Error handling button interaction {}: {:?}",
@@ -493,6 +498,7 @@ impl Bot {
                     select_menu_meta.custom_id
                 );
                 let context = InteractionContext::new(client, event);
+                log_executor_info(&context);
                 if let Err(e) = (select_menu_meta.run)(context).await {
                     warn!(
                         "Error handling select menu interaction {}: {:?}",
@@ -576,5 +582,14 @@ impl Bot {
             .name()
             .and_then(|event_type| self.event_router.get(event_type))
             .map(RoutedHandler::Event)
+    }
+}
+
+fn log_executor_info(context: &InteractionContext) -> () {
+    if let Some(user) = context.author() {
+        let display_name = user.global_name.as_deref().unwrap_or("<unknown>");
+        let user_name = user.name.as_str();
+        let user_id = user.id.to_string();
+        info!("Executed by: {display_name} (name: {user_name}, ID: {user_id})");
     }
 }

@@ -24,7 +24,12 @@ impl<K: 'static + Hash + Eq, V: 'static> StaticRouter<K, V> {
     where
         I: IntoIterator<Item = &'static V>,
     {
-        let mut table = FxHashMap::<K, &'static V>::default();
+        let items = items.into_iter();
+
+        let mut table = FxHashMap::<K, &'static V>::with_capacity_and_hasher(
+            items.size_hint().0,
+            FxBuildHasher::default(),
+        );
 
         for item in items {
             let key = key_extractor(item);

@@ -10,6 +10,7 @@
 use crate::core::client::Client;
 use anyhow::Result;
 use twilight_model::application::interaction::modal::ModalInteractionComponent;
+pub use twilight_model::channel::message::component::ButtonStyle;
 use twilight_model::{
     application::interaction::{
         application_command::{CommandData, CommandDataOption, CommandOptionValue}, message_component::MessageComponentInteractionData,
@@ -30,6 +31,10 @@ use twilight_model::{
     user::User,
 };
 pub use twilight_util::builder::embed::EmbedBuilder;
+pub use twilight_util::builder::message::{
+    ActionRowBuilder, ButtonBuilder, ContainerBuilder, SelectMenuBuilder, SelectMenuOptionBuilder,
+    TextDisplayBuilder,
+};
 pub use twilight_util::builder::InteractionResponseDataBuilder as InteractionResponseBuilder;
 
 /// Converts a value into a Discord interaction response payload.

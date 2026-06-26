@@ -11,6 +11,10 @@
 
 /// Metadata for user and message context commands.
 pub mod context;
+/// Metadata for message component interactions (buttons and select menus).
+pub mod message_component;
+/// Modal metadata definitions.
+pub mod modal;
 /// Command visibility and registration scope.
 pub mod scope;
 /// Slash command metadata and option definitions.

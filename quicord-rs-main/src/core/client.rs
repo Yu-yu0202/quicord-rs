@@ -6,6 +6,8 @@
  * was not distributed with this file, You can obtain one at
  * https://mozilla.org/MPL/2.0/.
  */
+use crate::command::message_component::{ButtonMetadata, SelectMenuMetadata};
+use crate::command::modal::ModalMetadata;
 use crate::util::logger::init_logger;
 use crate::{
     command::{
@@ -31,6 +33,8 @@ use tokio::signal::unix::{signal, SignalKind};
 use tracing::{debug, error, info, warn};
 use twilight_gateway::{ConfigBuilder, EventTypeFlags, Intents, Shard, StreamExt};
 use twilight_http::Client as HttpClient;
+use twilight_model::application::interaction::message_component::MessageComponentInteractionData;
+use twilight_model::channel::message::component::ComponentType;
 use twilight_model::gateway::CloseFrame;
 use twilight_model::{
     application::{
@@ -69,6 +73,12 @@ pub enum RoutedHandler {
     UserContext(&'static UserContextCommandMetadata),
     /// A message context command handler.
     MessageContext(&'static MessageContextCommandMetadata),
+    /// A button interaction handler.
+    Button(&'static ButtonMetadata),
+    /// A select menu interaction handler.
+    SelectMenu(&'static SelectMenuMetadata),
+    /// A modal interaction handler.
+    Modal(&'static ModalMetadata),
 }
 
 /// Shared HTTP client wrapper used by the bot runtime.
@@ -95,6 +105,9 @@ pub struct Bot {
     slash_router: StaticRouter<&'static str, SlashCommandMetadata>,
     user_context_router: StaticRouter<&'static str, UserContextCommandMetadata>,
     message_context_router: StaticRouter<&'static str, MessageContextCommandMetadata>,
+    modal_router: StaticRouter<&'static str, ModalMetadata>,
+    button_router: StaticRouter<&'static str, ButtonMetadata>,
+    select_menu_router: StaticRouter<&'static str, SelectMenuMetadata>,
 }
 
 /// Pending command registrations grouped by scope.
@@ -172,6 +185,17 @@ impl BotBuilder {
             StaticRouter::new(USER_CONTEXT_COMMANDS.iter(), |metadata| metadata.name);
         let message_context_router =
             StaticRouter::new(MESSAGE_CONTEXT_COMMANDS.iter(), |metadata| metadata.name);
+        let modal_router = StaticRouter::new(crate::command::modal::MODALS.iter(), |metadata| {
+            metadata.custom_id
+        });
+        let button_router = StaticRouter::new(
+            crate::command::message_component::BUTTONS.iter(),
+            |metadata| metadata.custom_id,
+        );
+        let select_menu_router = StaticRouter::new(
+            crate::command::message_component::SELECT_MENUS.iter(),
+            |metadata| metadata.custom_id,
+        );
 
         Ok(Bot {
             client: Client::new(http),
@@ -181,6 +205,9 @@ impl BotBuilder {
             slash_router,
             user_context_router,
             message_context_router,
+            modal_router,
+            button_router,
+            select_menu_router,
         })
     }
 }
@@ -430,18 +457,96 @@ impl Bot {
                     );
                 }
             }
+            RoutedHandler::Modal(modal_meta) => {
+                info!("Handling modal submission: {}", modal_meta.custom_id);
+                let context = InteractionContext::new(client, event);
+                if let Err(e) = (modal_meta.run)(context).await {
+                    warn!(
+                        "Error handling modal submission {}: {:?}",
+                        modal_meta.custom_id, e
+                    );
+                } else {
+                    info!(
+                        "Successfully handled modal submission: {}",
+                        modal_meta.custom_id
+                    );
+                }
+            }
+            RoutedHandler::Button(button_meta) => {
+                info!("Handling button interaction: {}", button_meta.custom_id);
+                let context = InteractionContext::new(client, event);
+                if let Err(e) = (button_meta.run)(context).await {
+                    warn!(
+                        "Error handling button interaction {}: {:?}",
+                        button_meta.custom_id, e
+                    );
+                } else {
+                    info!(
+                        "Successfully handled button interaction: {}",
+                        button_meta.custom_id
+                    );
+                }
+            }
+            RoutedHandler::SelectMenu(select_menu_meta) => {
+                info!(
+                    "Handling select menu interaction: {}",
+                    select_menu_meta.custom_id
+                );
+                let context = InteractionContext::new(client, event);
+                if let Err(e) = (select_menu_meta.run)(context).await {
+                    warn!(
+                        "Error handling select menu interaction {}: {:?}",
+                        select_menu_meta.custom_id, e
+                    );
+                } else {
+                    info!(
+                        "Successfully handled select menu interaction: {}",
+                        select_menu_meta.custom_id
+                    );
+                }
+            }
+        }
+    }
+
+    /// Resolves message component interactions to their corresponding handlers based on the custom ID.
+    fn route_component(
+        &self,
+        component: &MessageComponentInteractionData,
+    ) -> Option<RoutedHandler> {
+        match component.component_type {
+            ComponentType::Button => self
+                .button_router
+                .get(component.custom_id.as_str())
+                .map(RoutedHandler::Button),
+
+            ComponentType::MentionableSelectMenu
+            | ComponentType::RoleSelectMenu
+            | ComponentType::UserSelectMenu
+            | ComponentType::ChannelSelectMenu => self
+                .select_menu_router
+                .get(component.custom_id.as_str())
+                .map(RoutedHandler::SelectMenu),
+
+            _ => None,
         }
     }
 
     /// Resolves an incoming event into a registered handler, if any.
     pub fn route_event(&self, event: &Event) -> Option<RoutedHandler> {
-        if let Event::InteractionCreate(interaction) = event {
-            if let Some(InteractionData::ApplicationCommand(ref cmd)) = interaction.data {
-                return self.route_application_command(cmd.kind, cmd.name.as_str());
-            }
+        match event {
+            Event::InteractionCreate(interaction) => match interaction.data.as_ref()? {
+                InteractionData::ApplicationCommand(cmd) => {
+                    self.route_application_command(cmd.kind, &cmd.name)
+                }
+                InteractionData::MessageComponent(component) => self.route_component(component),
+                InteractionData::ModalSubmit(modal) => self
+                    .modal_router
+                    .get(modal.custom_id.as_str())
+                    .map(RoutedHandler::Modal),
+                _ => None,
+            },
+            _ => self.route_gateway_event(event),
         }
-
-        self.route_gateway_event(event)
     }
 
     /// Resolves a Discord application command into a command handler.

@@ -7,8 +7,8 @@ use quicord_rs::{BotBuilder, InteractionContext};
     Integer("num2")
 ])]
 async fn add(ctx: InteractionContext) -> anyhow::Result<()> {
-    let num1 = ctx.required_option::<i64>("num1")?;
-    let num2 = ctx.required_option::<i64>("num2")?;
+    let num1 = ctx.options().unwrap().integer("num1").unwrap_or(0i64);
+    let num2 = ctx.options().unwrap().integer("num2").unwrap_or(0i64);
 
     let sum = num1 + num2;
     let res = quicord_rs::core::interaction::InteractionResponseBuilder::new()

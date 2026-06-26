@@ -9,16 +9,12 @@
 
 use crate::core::client::Client;
 use anyhow::Result;
-use std::{error::Error, fmt};
 use twilight_model::{
-    application::{
-        command::CommandOptionType,
-        interaction::{
-            application_command::{CommandData, CommandDataOption, CommandOptionValue}, message_component::MessageComponentInteractionData,
-            modal::ModalInteractionData,
-            Interaction,
-            InteractionData,
-        },
+    application::interaction::{
+        application_command::{CommandData, CommandDataOption, CommandOptionValue}, message_component::MessageComponentInteractionData,
+        modal::ModalInteractionData,
+        Interaction,
+        InteractionData,
     },
     channel::{message::MessageFlags, Channel, Message},
     gateway::event::Event,
@@ -39,52 +35,6 @@ pub use twilight_util::builder::InteractionResponseDataBuilder as InteractionRes
 pub trait IntoResponse {
     /// Builds the response payload.
     fn into_response(self) -> InteractionResponseData;
-}
-
-/// Errors returned when a command option is missing or has the wrong type.
-#[derive(Debug)]
-pub enum CommandOptionError {
-    /// The requested option was not present.
-    Missing {
-        /// The missing option name.
-        name: String,
-    },
-    /// The option was present but had an unexpected type.
-    TypeMismatch {
-        /// The option name.
-        name: String,
-        /// The expected Discord type.
-        expected: CommandOptionType,
-        /// The actual Discord type.
-        actual: CommandOptionType,
-    },
-}
-
-impl fmt::Display for CommandOptionError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Missing { name } => write!(f, "missing command option `{name}`"),
-            Self::TypeMismatch {
-                name,
-                expected,
-                actual,
-            } => write!(
-                f,
-                "command option `{name}` has type `{actual:?}`, expected `{expected:?}`"
-            ),
-        }
-    }
-}
-
-impl Error for CommandOptionError {}
-
-/// Converts a raw Discord option value into a strongly typed value.
-pub trait FromCommandOptionValue: Sized {
-    /// The Discord option type required by the target value.
-    const EXPECTED_TYPE: CommandOptionType;
-
-    /// Attempts to convert the raw option value.
-    fn from_command_option_value(value: &CommandOptionValue) -> Option<Self>;
 }
 
 /// Wrapper around the options for a subcommand.
@@ -162,6 +112,140 @@ impl IntoResponse for InteractionResponseBuilder {
 impl IntoResponse for InteractionResponseData {
     fn into_response(self) -> InteractionResponseData {
         self
+    }
+}
+
+/// A view for accessing the options of an interaction.
+pub struct CommandOptionsView<'a> {
+    data: &'a [CommandDataOption],
+}
+
+impl<'a> CommandOptionsView<'a> {
+    pub(crate) fn new(data: &'a [CommandDataOption]) -> Self {
+        Self { data }
+    }
+
+    /// Returns a string option value by name.
+    pub fn string(&self, name: &str) -> Option<&'a str> {
+        self.data
+            .iter()
+            .find(|option| option.name == name)
+            .and_then(|option| match &option.value {
+                CommandOptionValue::String(value) => Some(value.as_str()),
+                _ => None,
+            })
+    }
+
+    /// Returns an integer option value by name.
+    pub fn integer(&self, name: &str) -> Option<i64> {
+        self.data
+            .iter()
+            .find(|option| option.name == name)
+            .and_then(|option| match &option.value {
+                CommandOptionValue::Integer(value) => Some(*value),
+                _ => None,
+            })
+    }
+
+    /// Returns a number option value by name.
+    pub fn number(&self, name: &str) -> Option<f64> {
+        self.data
+            .iter()
+            .find(|option| option.name == name)
+            .and_then(|option| match &option.value {
+                CommandOptionValue::Number(value) => Some(*value),
+                _ => None,
+            })
+    }
+
+    /// Returns a boolean option value by name.
+    pub fn boolean(&self, name: &str) -> Option<bool> {
+        self.data
+            .iter()
+            .find(|option| option.name == name)
+            .and_then(|option| match &option.value {
+                CommandOptionValue::Boolean(value) => Some(*value),
+                _ => None,
+            })
+    }
+
+    /// Returns a user option value by name.
+    pub fn user(&self, name: &str) -> Option<Id<UserMarker>> {
+        self.data
+            .iter()
+            .find(|option| option.name == name)
+            .and_then(|option| match &option.value {
+                CommandOptionValue::User(value) => Some(*value),
+                _ => None,
+            })
+    }
+
+    /// Returns a role option value by name.
+    pub fn role(&self, name: &str) -> Option<Id<RoleMarker>> {
+        self.data
+            .iter()
+            .find(|option| option.name == name)
+            .and_then(|option| match &option.value {
+                CommandOptionValue::Role(value) => Some(*value),
+                _ => None,
+            })
+    }
+
+    /// Returns a channel option value by name.
+    pub fn channel(&self, name: &str) -> Option<Id<ChannelMarker>> {
+        self.data
+            .iter()
+            .find(|option| option.name == name)
+            .and_then(|option| match &option.value {
+                CommandOptionValue::Channel(value) => Some(*value),
+                _ => None,
+            })
+    }
+
+    /// Returns a mentionable option value by name.
+    pub fn mentionable(&self, name: &str) -> Option<Id<GenericMarker>> {
+        self.data
+            .iter()
+            .find(|option| option.name == name)
+            .and_then(|option| match &option.value {
+                CommandOptionValue::Mentionable(value) => Some(*value),
+                _ => None,
+            })
+    }
+
+    /// Returns an attachment option value by name.
+    pub fn attachment(&self, name: &str) -> Option<Id<AttachmentMarker>> {
+        self.data
+            .iter()
+            .find(|option| option.name == name)
+            .and_then(|option| match &option.value {
+                CommandOptionValue::Attachment(value) => Some(*value),
+                _ => None,
+            })
+    }
+
+    /// Returns a subcommand option value by name.
+    pub fn subcommand(&self, name: &str) -> Option<SubCommandOptions> {
+        self.data
+            .iter()
+            .find(|option| option.name == name)
+            .and_then(|option| match &option.value {
+                CommandOptionValue::SubCommand(options) => Some(SubCommandOptions(options.clone())),
+                _ => None,
+            })
+    }
+
+    /// Returns a subcommand group option value by name.
+    pub fn subcommand_group(&self, name: &str) -> Option<SubCommandGroupOptions> {
+        self.data
+            .iter()
+            .find(|option| option.name == name)
+            .and_then(|option| match &option.value {
+                CommandOptionValue::SubCommandGroup(options) => {
+                    Some(SubCommandGroupOptions(options.clone()))
+                }
+                _ => None,
+            })
     }
 }
 
@@ -310,41 +394,10 @@ impl InteractionContext {
         self.command_data().map(|data| data.name.as_str())
     }
 
-    /// Returns a single command option by name.
-    pub fn command_option(&self, name: &str) -> Option<&CommandDataOption> {
-        self.command_data()?
-            .options
-            .iter()
-            .find(|option| option.name == name)
-    }
-
-    /// Reads a command option and converts it into the requested type.
-    pub fn option<T>(&self, name: &str) -> std::result::Result<Option<T>, CommandOptionError>
-    where
-        T: FromCommandOptionValue,
-    {
-        let Some(option) = self.command_option(name) else {
-            return Ok(None);
-        };
-
-        T::from_command_option_value(&option.value)
-            .map(Some)
-            .ok_or_else(|| CommandOptionError::TypeMismatch {
-                name: name.to_string(),
-                expected: T::EXPECTED_TYPE,
-                actual: option.value.kind(),
-            })
-    }
-
-    /// Reads a required command option and converts it into the requested type.
-    pub fn required_option<T>(&self, name: &str) -> std::result::Result<T, CommandOptionError>
-    where
-        T: FromCommandOptionValue,
-    {
-        self.option(name)?
-            .ok_or_else(|| CommandOptionError::Missing {
-                name: name.to_string(),
-            })
+    /// Returns options view if the interaction is a slash command.
+    pub fn options(&self) -> Option<CommandOptionsView<'_>> {
+        self.command_data()
+            .map(|data| CommandOptionsView::new(data.options.as_slice()))
     }
 
     /// Sends a raw interaction response to Discord.
@@ -372,137 +425,5 @@ fn ephemeral_response_data() -> InteractionResponseData {
     InteractionResponseData {
         flags: Some(MessageFlags::EPHEMERAL),
         ..Default::default()
-    }
-}
-
-/// Converts attachment option values into attachment IDs.
-impl FromCommandOptionValue for Id<AttachmentMarker> {
-    const EXPECTED_TYPE: CommandOptionType = CommandOptionType::Attachment;
-
-    fn from_command_option_value(value: &CommandOptionValue) -> Option<Self> {
-        match value {
-            CommandOptionValue::Attachment(value) => Some(*value),
-            _ => None,
-        }
-    }
-}
-
-/// Converts boolean option values into `bool`.
-impl FromCommandOptionValue for bool {
-    const EXPECTED_TYPE: CommandOptionType = CommandOptionType::Boolean;
-
-    fn from_command_option_value(value: &CommandOptionValue) -> Option<Self> {
-        match value {
-            CommandOptionValue::Boolean(value) => Some(*value),
-            _ => None,
-        }
-    }
-}
-
-/// Converts channel option values into channel IDs.
-impl FromCommandOptionValue for Id<ChannelMarker> {
-    const EXPECTED_TYPE: CommandOptionType = CommandOptionType::Channel;
-
-    fn from_command_option_value(value: &CommandOptionValue) -> Option<Self> {
-        match value {
-            CommandOptionValue::Channel(value) => Some(*value),
-            _ => None,
-        }
-    }
-}
-
-/// Converts integer option values into `i64`.
-impl FromCommandOptionValue for i64 {
-    const EXPECTED_TYPE: CommandOptionType = CommandOptionType::Integer;
-
-    fn from_command_option_value(value: &CommandOptionValue) -> Option<Self> {
-        match value {
-            CommandOptionValue::Integer(value) => Some(*value),
-            _ => None,
-        }
-    }
-}
-
-/// Converts mentionable option values into generic IDs.
-impl FromCommandOptionValue for Id<GenericMarker> {
-    const EXPECTED_TYPE: CommandOptionType = CommandOptionType::Mentionable;
-
-    fn from_command_option_value(value: &CommandOptionValue) -> Option<Self> {
-        match value {
-            CommandOptionValue::Mentionable(value) => Some(*value),
-            _ => None,
-        }
-    }
-}
-
-/// Converts number option values into `f64`.
-impl FromCommandOptionValue for f64 {
-    const EXPECTED_TYPE: CommandOptionType = CommandOptionType::Number;
-
-    fn from_command_option_value(value: &CommandOptionValue) -> Option<Self> {
-        match value {
-            CommandOptionValue::Number(value) => Some(*value),
-            _ => None,
-        }
-    }
-}
-
-/// Converts role option values into role IDs.
-impl FromCommandOptionValue for Id<RoleMarker> {
-    const EXPECTED_TYPE: CommandOptionType = CommandOptionType::Role;
-
-    fn from_command_option_value(value: &CommandOptionValue) -> Option<Self> {
-        match value {
-            CommandOptionValue::Role(value) => Some(*value),
-            _ => None,
-        }
-    }
-}
-
-/// Converts string option values into owned strings.
-impl FromCommandOptionValue for String {
-    const EXPECTED_TYPE: CommandOptionType = CommandOptionType::String;
-
-    fn from_command_option_value(value: &CommandOptionValue) -> Option<Self> {
-        match value {
-            CommandOptionValue::String(value) => Some(value.clone()),
-            _ => None,
-        }
-    }
-}
-
-/// Converts subcommand option values into `SubCommandOptions`.
-impl FromCommandOptionValue for SubCommandOptions {
-    const EXPECTED_TYPE: CommandOptionType = CommandOptionType::SubCommand;
-
-    fn from_command_option_value(value: &CommandOptionValue) -> Option<Self> {
-        match value {
-            CommandOptionValue::SubCommand(value) => Some(Self(value.clone())),
-            _ => None,
-        }
-    }
-}
-
-/// Converts subcommand group option values into `SubCommandGroupOptions`.
-impl FromCommandOptionValue for SubCommandGroupOptions {
-    const EXPECTED_TYPE: CommandOptionType = CommandOptionType::SubCommandGroup;
-
-    fn from_command_option_value(value: &CommandOptionValue) -> Option<Self> {
-        match value {
-            CommandOptionValue::SubCommandGroup(value) => Some(Self(value.clone())),
-            _ => None,
-        }
-    }
-}
-
-/// Converts user option values into user IDs.
-impl FromCommandOptionValue for Id<UserMarker> {
-    const EXPECTED_TYPE: CommandOptionType = CommandOptionType::User;
-
-    fn from_command_option_value(value: &CommandOptionValue) -> Option<Self> {
-        match value {
-            CommandOptionValue::User(value) => Some(*value),
-            _ => None,
-        }
     }
 }

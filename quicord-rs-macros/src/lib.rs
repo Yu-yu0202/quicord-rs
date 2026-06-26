@@ -55,3 +55,36 @@ pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
     )
     .into()
 }
+
+/// Attribute macro that registers a modal handler.
+#[proc_macro_attribute]
+pub fn modal(attr: TokenStream, item: TokenStream) -> TokenStream {
+    expand::message_components(
+        parse_macro_input!(attr as args::MessageComponentsArgs),
+        parse_macro_input!(item as ItemFn),
+        expand::MessageComponentsKind::Modal,
+    )
+    .into()
+}
+
+/// Attribute macro that registers a button handler.
+#[proc_macro_attribute]
+pub fn button(attr: TokenStream, item: TokenStream) -> TokenStream {
+    expand::message_components(
+        parse_macro_input!(attr as args::MessageComponentsArgs),
+        parse_macro_input!(item as ItemFn),
+        expand::MessageComponentsKind::Button,
+    )
+    .into()
+}
+
+/// Attribute macro that registers a select menu handler.
+#[proc_macro_attribute]
+pub fn select_menu(attr: TokenStream, item: TokenStream) -> TokenStream {
+    expand::message_components(
+        parse_macro_input!(attr as args::MessageComponentsArgs),
+        parse_macro_input!(item as ItemFn),
+        expand::MessageComponentsKind::SelectMenu,
+    )
+    .into()
+}

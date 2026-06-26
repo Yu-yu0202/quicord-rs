@@ -28,6 +28,11 @@ pub(crate) struct CommandArgs {
     pub(crate) options: Option<Vec<CommandOptionSpec>>,
 }
 
+/// Parsed arguments accepted by the message component or modal (e.x. button, select menu, modal) attribute macros.
+pub(crate) struct MessageComponentsArgs {
+    pub(crate) custom_id: Option<LitStr>,
+}
+
 /// Command registration scope parsed from the attribute input.
 pub(crate) enum ScopeArg {
     /// Register globally.
@@ -134,6 +139,39 @@ impl Parse for EventArgs {
                 "once" => {
                     reject_duplicate(&parsed.once, ident.span(), "once")?;
                     parsed.once = Some(parse_bool_literal(name_value.value, "once")?);
+                }
+                other => {
+                    return Err(Error::new_spanned(
+                        ident,
+                        format!("unknown command attribute `{other}`"),
+                    ));
+                }
+            }
+        }
+
+        Ok(parsed)
+    }
+}
+
+impl Parse for MessageComponentsArgs {
+    /// Parses `key = value` pairs from the attribute input.
+    fn parse(input: ParseStream<'_>) -> Result<Self> {
+        let args = Punctuated::<Meta, Token![,]>::parse_terminated(input)?;
+        let mut parsed = MessageComponentsArgs { custom_id: None };
+
+        for arg in args {
+            let Meta::NameValue(name_value) = arg else {
+                return Err(Error::new_spanned(arg, "expected `key = value`"));
+            };
+
+            let Some(ident) = name_value.path.get_ident() else {
+                return Err(Error::new_spanned(name_value.path, "expected simple key"));
+            };
+
+            match ident.to_string().as_str() {
+                "custom_id" => {
+                    reject_duplicate(&parsed.custom_id, ident.span(), "custom_id")?;
+                    parsed.custom_id = Some(parse_string_literal(name_value.value, "custom_id")?);
                 }
                 other => {
                     return Err(Error::new_spanned(

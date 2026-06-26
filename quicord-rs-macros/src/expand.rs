@@ -6,12 +6,13 @@
  * was not distributed with this file, You can obtain one at
  * https://mozilla.org/MPL/2.0/.
  */
-
 use proc_macro2::Span;
 use quote::{format_ident, quote};
 use syn::{Error, ItemFn, Result};
 
-use crate::args::{CommandArgs, CommandOptionKind, CommandOptionSpec, EventArgs, ScopeArg};
+use crate::args::{
+    CommandArgs, CommandOptionKind, CommandOptionSpec, EventArgs, MessageComponentsArgs, ScopeArg,
+};
 
 /// Discriminant used while expanding a command handler.
 pub(crate) enum CommandKind {
@@ -21,6 +22,16 @@ pub(crate) enum CommandKind {
     MessageContext,
     /// User context command expansion.
     UserContext,
+}
+
+/// Discriminant used while expanding an event handler.
+pub(crate) enum MessageComponentsKind {
+    /// Button expansion.
+    Button,
+    /// Select menu expansion.
+    SelectMenu,
+    /// Modal expansion.
+    Modal,
 }
 
 /// Validates the input and dispatches to the correct expansion routine.
@@ -74,6 +85,27 @@ pub(crate) fn event(args: EventArgs, item_fn: ItemFn) -> proc_macro2::TokenStrea
             handler: #handler_fn,
             once: #once,
         };
+    }
+}
+
+/// Validates the input and dispatches to the message components handler expansion routine.
+pub(crate) fn message_components(
+    args: MessageComponentsArgs,
+    item_fn: ItemFn,
+    kind: MessageComponentsKind,
+) -> proc_macro2::TokenStream {
+    if item_fn.sig.asyncness.is_none() {
+        return Error::new_spanned(
+            item_fn.sig.fn_token,
+            "message components handler must be async",
+        )
+        .to_compile_error();
+    }
+
+    match kind {
+        MessageComponentsKind::Button => button(args, item_fn),
+        MessageComponentsKind::SelectMenu => select_menu(args, item_fn),
+        MessageComponentsKind::Modal => modal(args, item_fn),
     }
 }
 
@@ -212,6 +244,99 @@ fn context_command(
                     };
             }
         }
+    }
+}
+
+fn button(args: MessageComponentsArgs, item_fn: ItemFn) -> proc_macro2::TokenStream {
+    let custom_id = match required(args.custom_id, "custom_id", Span::call_site()) {
+        Ok(custom_id) => custom_id,
+        Err(err) => return err.to_compile_error(),
+    };
+
+    let handler_name = item_fn.sig.ident.clone();
+    let handler_fn = format_ident!("__quicord_rs_{}_button_handler", handler_name);
+    let metadata = format_ident!(
+        "__QUICORD_RS_{}_BUTTON__",
+        handler_name.to_string().to_uppercase()
+    );
+
+    quote! {
+        #item_fn
+
+        fn #handler_fn(
+            ctx: ::quicord_rs::core::interaction::InteractionContext,
+        ) -> ::quicord_rs::command::CommandFuture {
+            ::std::boxed::Box::pin(#handler_name(ctx))
+        }
+
+        #[quicord_rs::linkme::distributed_slice(::quicord_rs::command::message_component::BUTTONS)]
+        static #metadata: ::quicord_rs::command::message_component::ButtonMetadata =
+            ::quicord_rs::command::message_component::ButtonMetadata {
+                custom_id: #custom_id,
+                run: #handler_fn,
+            };
+    }
+}
+
+fn select_menu(args: MessageComponentsArgs, item_fn: ItemFn) -> proc_macro2::TokenStream {
+    let custom_id = match required(args.custom_id, "custom_id", Span::call_site()) {
+        Ok(custom_id) => custom_id,
+        Err(err) => return err.to_compile_error(),
+    };
+
+    let handler_name = item_fn.sig.ident.clone();
+    let handler_fn = format_ident!("__quicord_rs_{}_select_menu_handler", handler_name);
+    let metadata = format_ident!(
+        "__QUICORD_RS_{}_SELECT_MENU__",
+        handler_name.to_string().to_uppercase()
+    );
+
+    quote! {
+        #item_fn
+
+        fn #handler_fn(
+            ctx: ::quicord_rs::core::interaction::InteractionContext,
+        ) -> ::quicord_rs::command::CommandFuture {
+            ::std::boxed::Box::pin(#handler_name(ctx))
+        }
+
+        #[quicord_rs::linkme::distributed_slice(::quicord_rs::command::message_component::SELECT_MENUS)]
+        static #metadata: ::quicord_rs::command::message_component::SelectMenuMetadata =
+            ::quicord_rs::command::message_component::SelectMenuMetadata {
+                custom_id: #custom_id,
+                run: #handler_fn,
+            };
+    }
+}
+
+fn modal(args: MessageComponentsArgs, item_fn: ItemFn) -> proc_macro2::TokenStream {
+    let custom_id = match required(args.custom_id, "custom_id", Span::call_site()) {
+        Ok(custom_id) => custom_id,
+        Err(err) => return err.to_compile_error(),
+    };
+
+    let handler_name = item_fn.sig.ident.clone();
+    let handler_fn = format_ident!("__quicord_rs_{}_modal_handler", handler_name);
+    let metadata = format_ident!(
+        "__QUICORD_RS_{}_MODAL__",
+        handler_name.to_string().to_uppercase()
+    );
+
+    quote! {
+        #item_fn
+
+        fn #handler_fn(
+            ctx: ::quicord_rs::core::interaction::InteractionContext,
+        ) -> ::quicord_rs::command::CommandFuture {
+            ::std::boxed::Box::pin(#handler_name(ctx))
+        }
+
+        #[quicord_rs::linkme::distributed_slice(::quicord_rs::command::modal::MODALS)]
+        static #metadata: ::quicord_rs::command::modal::ModalMetadata =
+            ::quicord_rs::command::modal::ModalMetadata {
+                custom_id: #custom_id,
+                run: #handler_fn,
+            };
     }
 }
 

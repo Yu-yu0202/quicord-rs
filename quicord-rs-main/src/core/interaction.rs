@@ -425,6 +425,43 @@ impl InteractionContext {
         Ok(())
     }
 
+    /// Sends a modal response for the interaction.
+    pub async fn show_modal(&self, modal: impl Into<InteractionResponseData>) -> Result<()> {
+        if self.interaction().is_some() {
+            let data = modal.into();
+
+            self.create_response(InteractionResponseType::Modal, Some(data))
+                .await?;
+        }
+
+        Ok(())
+    }
+
+    /// Updates the original response message.
+    pub async fn update(&self, response: impl IntoResponse) -> Result<()> {
+        if self.interaction().is_some() {
+            let data = response.into_response();
+
+            self.create_response(InteractionResponseType::UpdateMessage, Some(data))
+                .await?;
+        }
+
+        Ok(())
+    }
+
+    /// Defers the update of the original response message and optionally marks it ephemeral.
+    pub async fn defer_update(&self, ephemeral: bool) -> Result<()> {
+        if self.interaction().is_some() {
+            self.create_response(
+                InteractionResponseType::DeferredUpdateMessage,
+                ephemeral.then(ephemeral_response_data),
+            )
+            .await?;
+        }
+
+        Ok(())
+    }
+
     /// Returns the underlying interaction if the event is an interaction create.
     pub fn interaction(&self) -> Option<&Interaction> {
         match &self.event {

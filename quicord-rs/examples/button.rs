@@ -7,18 +7,17 @@
  * https://mozilla.org/MPL/2.0/.
  */
 use quicord_rs::{
-    macros::{button, slash_command}, BotBuilder,
+    builder::button::ButtonBuilder, macros::{button, slash_command},
+    BotBuilder,
     InteractionContext,
 };
 
 #[slash_command(name = "show_button", description = "Show a button", scope = global)]
 async fn show_button(ctx: InteractionContext) -> anyhow::Result<()> {
-    let button = quicord_rs::core::interaction::ButtonBuilder::new(
-        quicord_rs::core::interaction::ButtonStyle::Primary,
-    )
-    .label("Click me!")
-    .custom_id("button_click")
-    .build();
+    let button = ButtonBuilder::new(quicord_rs::core::interaction::ButtonStyle::Primary)
+        .label("Click me!")
+        .custom_id("button_click")
+        .build();
 
     let res = quicord_rs::core::interaction::InteractionResponseBuilder::new().components(vec![
         quicord_rs::core::interaction::ActionRowBuilder::new()

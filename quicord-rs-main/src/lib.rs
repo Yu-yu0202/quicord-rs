@@ -20,6 +20,9 @@ pub mod core;
 pub use core::{Bot, BotBuilder, EventContext, InteractionContext};
 
 
+///
+pub mod builder;
+
 /// Utility helpers used internally by the runtime.
 pub mod util;
 

@@ -289,7 +289,16 @@ impl<'a> ModalView<'a> {
     pub fn component(&self, custom_id: &str) -> Option<&'a ModalInteractionComponent> {
         self.components
             .iter()
-            .find(|component| component.custom_id() == Some(custom_id))
+            .find_map(|component| match component {
+                component if component.custom_id() == Some(custom_id) => Some(component),
+
+                ModalInteractionComponent::ActionRow(row) => row
+                    .components
+                    .iter()
+                    .find(|component| component.custom_id() == Some(custom_id)),
+
+                _ => None,
+            })
     }
 
     /// Returns the text input value by custom ID.

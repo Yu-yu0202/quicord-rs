@@ -14,7 +14,7 @@ use quicord_rs::{
 
 #[slash_command(name = "show_button", description = "Show a button", scope = global)]
 async fn show_button(ctx: InteractionContext) -> anyhow::Result<()> {
-    let button = ButtonBuilder::new(quicord_rs::core::interaction::ButtonStyle::Primary)
+    let button = ButtonBuilder::new(quicord_rs::builder::button::ButtonStyle::Primary)
         .label("Click me!")
         .custom_id("button_click")
         .build();

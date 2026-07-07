@@ -10,7 +10,6 @@ pub mod view;
 
 use crate::core::client::Client;
 use anyhow::Result;
-pub use twilight_model::channel::message::component::ButtonStyle;
 use twilight_model::{
     application::interaction::{
         application_command::CommandData, message_component::MessageComponentInteractionData, modal::ModalInteractionData,

@@ -100,7 +100,7 @@ impl InteractionContext {
     }
 
     /// Sends a raw interaction response to Discord.
-    async fn create_response(
+    pub async fn create_response(
         &self,
         kind: InteractionResponseType,
         data: Option<InteractionResponseData>,

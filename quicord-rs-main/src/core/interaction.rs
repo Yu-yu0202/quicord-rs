@@ -6,18 +6,19 @@
  * was not distributed with this file, You can obtain one at
  * https://mozilla.org/MPL/2.0/.
  */
+mod command;
+mod component;
+mod modal;
+mod response;
+mod r#trait;
+
 pub mod view;
 
 use crate::core::client::Client;
-use anyhow::Result;
 use twilight_model::{
-    application::interaction::{
-        application_command::CommandData, message_component::MessageComponentInteractionData, modal::ModalInteractionData,
-        Interaction, InteractionData,
-    },
-    channel::{message::MessageFlags, Channel, Message},
+    application::interaction::{Interaction, InteractionData},
+    channel::{Channel, Message},
     gateway::event::Event,
-    http::interaction::{InteractionResponse, InteractionResponseData, InteractionResponseType},
     id::{
         marker::{ChannelMarker, GuildMarker, InteractionMarker, UserMarker},
         Id,
@@ -30,48 +31,6 @@ pub use twilight_util::builder::message::{
     TextDisplayBuilder,
 };
 pub use twilight_util::builder::InteractionResponseDataBuilder as InteractionResponseBuilder;
-use view::CommandOptionsView;
-use view::ModalView;
-
-/// Converts a value into a Discord interaction response payload.
-pub trait IntoResponse {
-    /// Builds the response payload.
-    fn into_response(self) -> InteractionResponseData;
-}
-
-/// Converts a string slice into a plain text response.
-impl IntoResponse for &str {
-    fn into_response(self) -> InteractionResponseData {
-        InteractionResponseData {
-            content: Some(self.to_string()),
-            ..Default::default()
-        }
-    }
-}
-
-/// Converts an owned string into a plain text response.
-impl IntoResponse for String {
-    fn into_response(self) -> InteractionResponseData {
-        InteractionResponseData {
-            content: Some(self),
-            ..Default::default()
-        }
-    }
-}
-
-/// Returns an interaction response builder unchanged.
-impl IntoResponse for InteractionResponseBuilder {
-    fn into_response(self) -> InteractionResponseData {
-        self.build()
-    }
-}
-
-/// Returns an already built interaction response unchanged.
-impl IntoResponse for InteractionResponseData {
-    fn into_response(self) -> InteractionResponseData {
-        self
-    }
-}
 
 /// Context passed to interaction handlers.
 #[derive(Clone)]
@@ -86,88 +45,6 @@ impl InteractionContext {
     /// Creates a new interaction context.
     pub(crate) fn new(client: Client, event: Event) -> Self {
         Self { client, event }
-    }
-
-    /// Sends a channel message response for the interaction.
-    pub async fn reply(&self, response: impl IntoResponse) -> Result<()> {
-        if self.interaction().is_some() {
-            let data = response.into_response();
-
-            self.create_response(
-                InteractionResponseType::ChannelMessageWithSource,
-                Some(data),
-            )
-            .await?;
-        }
-
-        Ok(())
-    }
-
-    /// Defers the initial response and optionally marks it ephemeral.
-    pub async fn defer_reply(&self, ephemeral: bool) -> Result<()> {
-        if self.interaction().is_some() {
-            self.create_response(
-                InteractionResponseType::DeferredChannelMessageWithSource,
-                ephemeral.then(ephemeral_response_data),
-            )
-            .await?;
-        }
-
-        Ok(())
-    }
-
-    /// Edits the original response message.
-    pub async fn edit_reply(&self, response: impl IntoResponse) -> Result<()> {
-        if let Some(interaction) = self.interaction() {
-            let data = response.into_response();
-            let json = serde_json::to_vec(&data)?;
-
-            self.client
-                .http
-                .interaction(interaction.application_id)
-                .update_response(&interaction.token)
-                .payload_json(&json)
-                .await?;
-        }
-
-        Ok(())
-    }
-
-    /// Sends a modal response for the interaction.
-    pub async fn show_modal(&self, modal: impl Into<InteractionResponseData>) -> Result<()> {
-        if self.interaction().is_some() {
-            let data = modal.into();
-
-            self.create_response(InteractionResponseType::Modal, Some(data))
-                .await?;
-        }
-
-        Ok(())
-    }
-
-    /// Updates the original response message.
-    pub async fn update(&self, response: impl IntoResponse) -> Result<()> {
-        if self.interaction().is_some() {
-            let data = response.into_response();
-
-            self.create_response(InteractionResponseType::UpdateMessage, Some(data))
-                .await?;
-        }
-
-        Ok(())
-    }
-
-    /// Defers the update of the original response message and optionally marks it ephemeral.
-    pub async fn defer_update(&self, ephemeral: bool) -> Result<()> {
-        if self.interaction().is_some() {
-            self.create_response(
-                InteractionResponseType::DeferredUpdateMessage,
-                ephemeral.then(ephemeral_response_data),
-            )
-            .await?;
-        }
-
-        Ok(())
     }
 
     /// Returns the underlying interaction if the event is an interaction create.
@@ -224,73 +101,5 @@ impl InteractionContext {
     pub fn data(&self) -> Option<&InteractionData> {
         self.interaction()
             .and_then(|interaction| interaction.data.as_ref())
-    }
-
-    /// Returns slash command data for application command interactions.
-    pub fn command_data(&self) -> Option<&CommandData> {
-        match self.data()? {
-            InteractionData::ApplicationCommand(data) => Some(data.as_ref()),
-            _ => None,
-        }
-    }
-
-    /// Returns message component data for component interactions.
-    pub fn component_data(&self) -> Option<&MessageComponentInteractionData> {
-        match self.data()? {
-            InteractionData::MessageComponent(data) => Some(data.as_ref()),
-            _ => None,
-        }
-    }
-
-    /// Returns modal submit data for modal interactions.
-    pub fn modal_data(&self) -> Option<&ModalInteractionData> {
-        match self.data()? {
-            InteractionData::ModalSubmit(data) => Some(data.as_ref()),
-            _ => None,
-        }
-    }
-
-    /// Returns the slash or context command name if available.
-    pub fn command_name(&self) -> Option<&str> {
-        self.command_data().map(|data| data.name.as_str())
-    }
-
-    /// Returns options view if the interaction is a slash command.
-    pub fn options(&self) -> Option<CommandOptionsView<'_>> {
-        self.command_data()
-            .map(|data| CommandOptionsView::new(data.options.as_slice()))
-    }
-
-    /// Returns a modal input view if the interaction is a modal submit.
-    pub fn modal(&self) -> Option<ModalView<'_>> {
-        self.modal_data()
-            .map(|data| ModalView::new(data.components.as_slice()))
-    }
-
-    /// Sends a raw interaction response to Discord.
-    async fn create_response(
-        &self,
-        kind: InteractionResponseType,
-        data: Option<InteractionResponseData>,
-    ) -> Result<()> {
-        if let Some(interaction) = self.interaction() {
-            let payload = InteractionResponse { kind, data };
-
-            self.client
-                .http
-                .interaction(interaction.application_id)
-                .create_response(interaction.id, &interaction.token, &payload)
-                .await?;
-        }
-
-        Ok(())
-    }
-}
-
-/// Builds the payload used for ephemeral interaction responses.
-fn ephemeral_response_data() -> InteractionResponseData {
-    InteractionResponseData {
-        flags: Some(MessageFlags::EPHEMERAL),
-        ..Default::default()
     }
 }

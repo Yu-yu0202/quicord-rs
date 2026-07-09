@@ -11,18 +11,18 @@
     * [x] オプションの取得
 * [x] メッセージコンテキストコマンド
 * [x] ユーザーコンテキストコマンド
-* [ ] ボタン
-* [ ] セレクトメニュー
-* [ ] モーダル
+* [x] ボタン
+* [x] セレクトメニュー
+* [x] モーダル
 
 ### マクロ
 
 * [x] `#[quicord_rs::slash_command]`
 * [x] `#[quicord_rs::message_context]`
 * [x] `#[quicord_rs::user_context]`
-* [ ] `#[quicord_rs::button]`
-* [ ] `#[quicord_rs::select_menu]`
-* [ ] `#[quicord_rs::modal]`
+* [x] `#[quicord_rs::button]`
+* [x] `#[quicord_rs::select_menu]`
+* [x] `#[quicord_rs::modal]`
 
 ## 使用例
 

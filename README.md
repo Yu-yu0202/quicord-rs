@@ -14,18 +14,18 @@ The goal of quicord-rs is to provide a simple and ergonomic API for creating Dis
     * [x] Command options
 * [x] Message Context Commands
 * [x] User Context Commands
-* [ ] Buttons
-* [ ] Select Menus
-* [ ] Modals
+* [x] Buttons
+* [x] Select Menus
+* [x] Modals
 
 ### Macros
 
 * [x] `#[quicord_rs::slash_command]`
 * [x] `#[quicord_rs::message_context]`
 * [x] `#[quicord_rs::user_context]`
-* [ ] `#[quicord_rs::button]`
-* [ ] `#[quicord_rs::select_menu]`
-* [ ] `#[quicord_rs::modal]`
+* [x] `#[quicord_rs::button]`
+* [x] `#[quicord_rs::select_menu]`
+* [x] `#[quicord_rs::modal]`
 
 ## Example
 

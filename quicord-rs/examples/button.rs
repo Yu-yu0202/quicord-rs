@@ -14,17 +14,18 @@ use quicord_rs::{
 
 #[slash_command(name = "show_button", description = "Show a button", scope = global)]
 async fn show_button(ctx: InteractionContext) -> anyhow::Result<()> {
-    let button = ButtonBuilder::new(quicord_rs::builder::button::ButtonStyle::Primary)
+    let button1 = ButtonBuilder::new(quicord_rs::builder::button::ButtonStyle::Primary)
         .label("Click me!")
         .custom_id("button_click")
-        .build();
+        .into_row_component();
 
-    let res = quicord_rs::core::interaction::InteractionResponseBuilder::new().components(vec![
-        quicord_rs::core::interaction::ActionRowBuilder::new()
-            .component(button)
-            .build()
-            .into(),
-    ]);
+    let button2 = ButtonBuilder::new(quicord_rs::builder::button::ButtonStyle::Secondary)
+        .label("Disable this button")
+        .custom_id("button_disable")
+        .into_row_component();
+
+    let res = quicord_rs::core::interaction::InteractionResponseBuilder::new()
+        .components(vec![button1, button2]);
 
     ctx.reply(res.build()).await?;
 
@@ -37,6 +38,22 @@ async fn button_click(ctx: InteractionContext) -> anyhow::Result<()> {
         .content("You clicked the button!");
 
     ctx.reply(res.build()).await?;
+
+    Ok(())
+}
+
+#[button(custom_id = "button_disable")]
+async fn button_disable(ctx: InteractionContext) -> anyhow::Result<()> {
+    let res = quicord_rs::core::interaction::InteractionResponseBuilder::new()
+        .content("This button is disabled!");
+
+    let button = ButtonBuilder::new(quicord_rs::builder::button::ButtonStyle::Secondary)
+        .label("Disabled")
+        .custom_id("button_disable")
+        .disabled(true)
+        .into_row_component();
+
+    ctx.update(res.components(vec![button])).await?;
 
     Ok(())
 }

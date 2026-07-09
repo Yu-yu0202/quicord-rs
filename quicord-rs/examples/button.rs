@@ -7,7 +7,7 @@
  * https://mozilla.org/MPL/2.0/.
  */
 use quicord_rs::{
-    builder::button::ButtonBuilder, macros::{button, slash_command},
+    builder::{button::ButtonBuilder, response::ResponseBuilder}, macros::{button, slash_command},
     BotBuilder,
     InteractionContext,
 };
@@ -16,44 +16,38 @@ use quicord_rs::{
 async fn show_button(ctx: InteractionContext) -> anyhow::Result<()> {
     let button1 = ButtonBuilder::new(quicord_rs::builder::button::ButtonStyle::Primary)
         .label("Click me!")
-        .custom_id("button_click")
-        .into_row_component();
+        .custom_id("button_click");
 
     let button2 = ButtonBuilder::new(quicord_rs::builder::button::ButtonStyle::Secondary)
         .label("Disable this button")
-        .custom_id("button_disable")
-        .into_row_component();
+        .custom_id("button_disable");
 
-    let res = quicord_rs::core::interaction::InteractionResponseBuilder::new()
-        .components(vec![button1, button2]);
+    let res = ResponseBuilder::new().button(button1).button(button2);
 
-    ctx.reply(res.build()).await?;
+    ctx.reply(res).await?;
 
     Ok(())
 }
 
 #[button(custom_id = "button_click")]
 async fn button_click(ctx: InteractionContext) -> anyhow::Result<()> {
-    let res = quicord_rs::core::interaction::InteractionResponseBuilder::new()
-        .content("You clicked the button!");
+    let res = ResponseBuilder::new().content("You clicked the button!");
 
-    ctx.reply(res.build()).await?;
+    ctx.reply(res).await?;
 
     Ok(())
 }
 
 #[button(custom_id = "button_disable")]
 async fn button_disable(ctx: InteractionContext) -> anyhow::Result<()> {
-    let res = quicord_rs::core::interaction::InteractionResponseBuilder::new()
-        .content("This button is disabled!");
+    let res = ResponseBuilder::new().content("This button is disabled!");
 
     let button = ButtonBuilder::new(quicord_rs::builder::button::ButtonStyle::Secondary)
         .label("Disabled")
         .custom_id("button_disable")
-        .disabled(true)
-        .into_row_component();
+        .disabled(true);
 
-    ctx.update(res.components(vec![button])).await?;
+    ctx.update(res.button(button)).await?;
 
     Ok(())
 }

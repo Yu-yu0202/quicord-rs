@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: CC0-1.0
 use quicord_rs::macros::slash_command;
-use quicord_rs::{BotBuilder, InteractionContext};
+use quicord_rs::{builder::response::ResponseBuilder, BotBuilder, InteractionContext};
 
 #[slash_command(name = "add", description = "Adds two numbers together!", scope = global, options = [
     Integer("num1"),
@@ -11,7 +11,7 @@ async fn add(ctx: InteractionContext) -> anyhow::Result<()> {
     let num2 = ctx.options().unwrap().integer("num2").unwrap_or(0i64);
 
     let sum = num1 + num2;
-    let res = quicord_rs::core::interaction::InteractionResponseBuilder::new()
+    let res = ResponseBuilder::new()
         .content(format!("The sum of {} and {} is {}!", num1, num2, sum))
         .build();
 

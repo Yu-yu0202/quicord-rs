@@ -10,7 +10,8 @@ mod command;
 mod component;
 mod modal;
 mod response;
-mod r#trait;
+
+pub(crate) mod r#trait;
 
 pub mod view;
 

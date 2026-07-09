@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: CC0-1.0
 use quicord_rs::macros::slash_command;
-use quicord_rs::{BotBuilder, InteractionContext};
+use quicord_rs::{builder::response::ResponseBuilder, BotBuilder, InteractionContext};
 
 #[slash_command(name = "ping", description = "Replies with Pong!", scope = global)]
 async fn ping(ctx: InteractionContext) -> anyhow::Result<()> {
@@ -11,9 +11,7 @@ async fn ping(ctx: InteractionContext) -> anyhow::Result<()> {
         .validate()?
         .build();
 
-    let res = quicord_rs::core::interaction::InteractionResponseBuilder::new()
-        .embeds([embed])
-        .build();
+    let res = ResponseBuilder::new().embed(embed).build();
 
     ctx.reply(res).await?;
     Ok(())

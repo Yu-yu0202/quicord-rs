@@ -685,7 +685,7 @@ dependencies = [
 
 [[package]]
 name = "quicord-rs"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "linkme",
@@ -705,7 +705,7 @@ dependencies = [
 
 [[package]]
 name = "quicord-rs-main"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "futures-util",

@@ -80,6 +80,7 @@ pub(crate) fn event(args: EventArgs, item_fn: ItemFn) -> proc_macro2::TokenStrea
         }
 
         #[quicord_rs::linkme::distributed_slice(::quicord_rs::core::event::EVENT_HANDLERS)]
+        #[linkme(crate = ::quicord_rs::linkme)]
         static #metadata: ::quicord_rs::core::event::EventHandlerMetadata = ::quicord_rs::core::event::EventHandlerMetadata {
             event_type: #event_type,
             handler: #handler_fn,
@@ -142,6 +143,7 @@ fn slash_command(args: CommandArgs, item_fn: ItemFn) -> proc_macro2::TokenStream
         }
 
         #[quicord_rs::linkme::distributed_slice(::quicord_rs::command::slash::SLASH_COMMANDS)]
+        #[linkme(crate = ::quicord_rs::linkme)]
         static #metadata: ::quicord_rs::command::slash::SlashCommandMetadata =
             ::quicord_rs::command::slash::SlashCommandMetadata {
                 name: #name,
@@ -211,6 +213,7 @@ fn context_command(
                 }
 
                 #[quicord_rs::linkme::distributed_slice(::quicord_rs::command::context::MESSAGE_CONTEXT_COMMANDS)]
+                #[linkme(crate = ::quicord_rs::linkme)]
                 static #metadata: ::quicord_rs::command::context::MessageContextCommandMetadata =
                     ::quicord_rs::command::context::MessageContextCommandMetadata {
                         name: #name,
@@ -236,6 +239,7 @@ fn context_command(
                 }
 
                 #[quicord_rs::linkme::distributed_slice(::quicord_rs::command::context::USER_CONTEXT_COMMANDS)]
+                #[linkme(crate = ::quicord_rs::linkme)]
                 static #metadata: ::quicord_rs::command::context::UserContextCommandMetadata =
                     ::quicord_rs::command::context::UserContextCommandMetadata {
                         name: #name,
@@ -270,6 +274,7 @@ fn button(args: MessageComponentsArgs, item_fn: ItemFn) -> proc_macro2::TokenStr
         }
 
         #[quicord_rs::linkme::distributed_slice(::quicord_rs::command::message_component::BUTTONS)]
+        #[linkme(crate = ::quicord_rs::linkme)]
         static #metadata: ::quicord_rs::command::message_component::ButtonMetadata =
             ::quicord_rs::command::message_component::ButtonMetadata {
                 custom_id: #custom_id,
@@ -301,6 +306,7 @@ fn select_menu(args: MessageComponentsArgs, item_fn: ItemFn) -> proc_macro2::Tok
         }
 
         #[quicord_rs::linkme::distributed_slice(::quicord_rs::command::message_component::SELECT_MENUS)]
+        #[linkme(crate = ::quicord_rs::linkme)]
         static #metadata: ::quicord_rs::command::message_component::SelectMenuMetadata =
             ::quicord_rs::command::message_component::SelectMenuMetadata {
                 custom_id: #custom_id,
@@ -332,6 +338,7 @@ fn modal(args: MessageComponentsArgs, item_fn: ItemFn) -> proc_macro2::TokenStre
         }
 
         #[quicord_rs::linkme::distributed_slice(::quicord_rs::command::modal::MODALS)]
+        #[linkme(crate = ::quicord_rs::linkme)]
         static #metadata: ::quicord_rs::command::modal::ModalMetadata =
             ::quicord_rs::command::modal::ModalMetadata {
                 custom_id: #custom_id,
@@ -349,10 +356,10 @@ fn required<T>(value: Option<T>, key: &str, span: Span) -> Result<T> {
 fn scope_tokens(scope: ScopeArg) -> proc_macro2::TokenStream {
     match scope {
         ScopeArg::Global => quote! {
-            ::quicord_rs_main::command::scope::CommandScope::Global
+            ::quicord_rs::command::scope::CommandScope::Global
         },
         ScopeArg::Guild(guild_ids) => quote! {
-            ::quicord_rs_main::command::scope::CommandScope::Guild(&[#(#guild_ids),*])
+            ::quicord_rs::command::scope::CommandScope::Guild(&[#(#guild_ids),*])
         },
     }
 }
@@ -366,7 +373,7 @@ fn option_tokens(options: Vec<CommandOptionSpec>) -> proc_macro2::TokenStream {
         let required = option.required;
 
         quote! {
-            ::quicord_rs_main::command::slash::SlashCommandOptionMetadata {
+            ::quicord_rs::command::slash::SlashCommandOptionMetadata {
                 name: #name,
                 description: #description,
                 kind: #kind,
@@ -386,31 +393,31 @@ fn option_tokens(options: Vec<CommandOptionSpec>) -> proc_macro2::TokenStream {
 fn option_kind_tokens(kind: CommandOptionKind) -> proc_macro2::TokenStream {
     match kind {
         CommandOptionKind::Attachment => {
-            quote!(::quicord_rs_main::command::slash::CommandOptionType::Attachment)
+            quote!(::quicord_rs::command::slash::CommandOptionType::Attachment)
         }
         CommandOptionKind::Boolean => {
-            quote!(::quicord_rs_main::command::slash::CommandOptionType::Boolean)
+            quote!(::quicord_rs::command::slash::CommandOptionType::Boolean)
         }
         CommandOptionKind::Channel => {
-            quote!(::quicord_rs_main::command::slash::CommandOptionType::Channel)
+            quote!(::quicord_rs::command::slash::CommandOptionType::Channel)
         }
         CommandOptionKind::Integer => {
-            quote!(::quicord_rs_main::command::slash::CommandOptionType::Integer)
+            quote!(::quicord_rs::command::slash::CommandOptionType::Integer)
         }
         CommandOptionKind::Mentionable => {
-            quote!(::quicord_rs_main::command::slash::CommandOptionType::Mentionable)
+            quote!(::quicord_rs::command::slash::CommandOptionType::Mentionable)
         }
         CommandOptionKind::Number => {
-            quote!(::quicord_rs_main::command::slash::CommandOptionType::Number)
+            quote!(::quicord_rs::command::slash::CommandOptionType::Number)
         }
         CommandOptionKind::Role => {
-            quote!(::quicord_rs_main::command::slash::CommandOptionType::Role)
+            quote!(::quicord_rs::command::slash::CommandOptionType::Role)
         }
         CommandOptionKind::String => {
-            quote!(::quicord_rs_main::command::slash::CommandOptionType::String)
+            quote!(::quicord_rs::command::slash::CommandOptionType::String)
         }
         CommandOptionKind::User => {
-            quote!(::quicord_rs_main::command::slash::CommandOptionType::User)
+            quote!(::quicord_rs::command::slash::CommandOptionType::User)
         }
     }
 }

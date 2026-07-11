@@ -1,6 +1,6 @@
 [package]
 name = "quicord-rs"
-version = "0.3.1"
+version = "0.3.2"
 edition = "2024"
 license = "MPL-2.0"
 autoexamples = true
@@ -18,5 +18,5 @@ anyhow = "1.0.102"
 linkme = "0.3.36"
 
 quicord-rs-macros = { version = "0.2.2", path = "../quicord-rs-macros", optional = true }
-quicord-rs-main = { version = "0.3.0", path = "../quicord-rs-main" }
+quicord-rs-main = { version = "0.3.2", path = "../quicord-rs-main" }
 tokio = { version = "1.52.3", features = ["rt", "rt-multi-thread", "macros"] }

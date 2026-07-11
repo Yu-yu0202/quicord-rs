@@ -65,7 +65,13 @@ impl Bot {
                             debug!("Received event: {:?}", event.kind());
 
                             if let Some(handler) = self.route_event(&event) {
-                                Self::handle_routed_event(self.client.clone(), handler, event).await;
+                                Self::handle_routed_event(
+                                    self.client.clone(),
+                                    self.storage.clone(),
+                                    handler,
+                                    event,
+                                )
+                                .await;
                             }
                         }
                         None => {

@@ -17,7 +17,7 @@ pub mod command;
 pub mod core;
 
 /// Reexports of the primary bot types from [`core`].
-pub use core::{Bot, BotBuilder, EventContext, InteractionContext};
+pub use core::{Bot, BotBuilder, BotBuilderStorage, EventContext, InteractionContext, Storage};
 
 
 ///

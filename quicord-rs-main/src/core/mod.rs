@@ -13,13 +13,17 @@
 pub mod client;
 /// Gateway event handler metadata.
 pub mod event;
+/// Shared application data storage.
+pub mod storage;
 /// Interaction context helpers and response conversion traits.
 pub mod interaction;
 
 /// Primary bot runtime type.
-pub use client::{Bot, BotBuilder};
+pub use client::{Bot, BotBuilder, BotBuilderStorage};
 /// Event context passed to event handlers.
 pub use event::EventContext;
 /// Context passed to interaction handlers.
 pub use interaction::InteractionContext;
+/// Shared application data storage.
+pub use storage::Storage;
 

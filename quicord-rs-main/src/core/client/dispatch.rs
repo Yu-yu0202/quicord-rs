@@ -8,6 +8,7 @@
  */
 use crate::core::client::router::RoutedHandler;
 use crate::core::client::Client;
+use crate::core::storage::Storage;
 use crate::{Bot, EventContext, InteractionContext};
 use lazy_static::lazy_static;
 use std::collections::HashSet;
@@ -21,7 +22,12 @@ lazy_static! {
 
 impl Bot {
     /// Dispatches a routed event to the associated handler.
-    pub(crate) async fn handle_routed_event(client: Client, handler: RoutedHandler, event: Event) {
+    pub(crate) async fn handle_routed_event(
+        client: Client,
+        storage: Storage,
+        handler: RoutedHandler,
+        event: Event,
+    ) {
         match handler {
             RoutedHandler::Event(event_meta) => {
                 let handler_id = event_meta.handler as usize;
@@ -41,7 +47,7 @@ impl Bot {
                 }
 
                 info!("Handling event: {}", event_meta.event_type);
-                let context = EventContext::new(client, event);
+                let context = EventContext::new(client, storage, event);
                 if let Err(e) = (event_meta.handler)(context).await {
                     warn!("Error handling event {}: {:?}", event_meta.event_type, e);
                 } else {
@@ -50,7 +56,7 @@ impl Bot {
             }
             RoutedHandler::Slash(command_meta) => {
                 info!("Handling slash command: /{}", command_meta.name);
-                let context = InteractionContext::new(client, event);
+                let context = InteractionContext::new(client, storage.clone(), event);
                 log_executor_info(&context);
                 if let Err(e) = (command_meta.run)(context).await {
                     warn!(
@@ -63,7 +69,7 @@ impl Bot {
             }
             RoutedHandler::UserContext(command_meta) => {
                 info!("Handling user context command: {}", command_meta.name);
-                let context = InteractionContext::new(client, event);
+                let context = InteractionContext::new(client, storage.clone(), event);
                 log_executor_info(&context);
                 if let Err(e) = (command_meta.run)(context).await {
                     warn!(
@@ -79,7 +85,7 @@ impl Bot {
             }
             RoutedHandler::MessageContext(command_meta) => {
                 info!("Handling message context command: {}", command_meta.name);
-                let context = InteractionContext::new(client, event);
+                let context = InteractionContext::new(client, storage.clone(), event);
                 log_executor_info(&context);
                 if let Err(e) = (command_meta.run)(context).await {
                     warn!(
@@ -95,7 +101,7 @@ impl Bot {
             }
             RoutedHandler::Modal(modal_meta) => {
                 info!("Handling modal submission: {}", modal_meta.custom_id);
-                let context = InteractionContext::new(client, event);
+                let context = InteractionContext::new(client, storage.clone(), event);
                 log_executor_info(&context);
                 if let Err(e) = (modal_meta.run)(context).await {
                     warn!(
@@ -111,7 +117,7 @@ impl Bot {
             }
             RoutedHandler::Button(button_meta) => {
                 info!("Handling button interaction: {}", button_meta.custom_id);
-                let context = InteractionContext::new(client, event);
+                let context = InteractionContext::new(client, storage.clone(), event);
                 log_executor_info(&context);
                 if let Err(e) = (button_meta.run)(context).await {
                     warn!(
@@ -130,7 +136,7 @@ impl Bot {
                     "Handling select menu interaction: {}",
                     select_menu_meta.custom_id
                 );
-                let context = InteractionContext::new(client, event);
+                let context = InteractionContext::new(client, storage.clone(), event);
                 log_executor_info(&context);
                 if let Err(e) = (select_menu_meta.run)(context).await {
                     warn!(

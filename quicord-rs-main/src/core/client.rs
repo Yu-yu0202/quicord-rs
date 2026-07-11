@@ -17,9 +17,12 @@ use crate::{
         slash::{SlashCommandMetadata, SLASH_COMMANDS},
     },
     core::event::{EventHandlerMetadata, EVENT_HANDLERS},
+    core::storage::Storage,
     util::static_router::StaticRouter,
 };
 use anyhow::Result;
+use std::any::{Any, TypeId};
+use std::collections::HashMap;
 use std::sync::Arc;
 use twilight_gateway::{ConfigBuilder, Intents, Shard};
 use twilight_http::Client as HttpClient;
@@ -44,6 +47,12 @@ pub struct Client {
 /// Builder used to construct a [`Bot`].
 pub struct BotBuilder {
     token: String,
+    storage: HashMap<TypeId, Box<dyn Any + Send + Sync>>,
+}
+
+/// Fluent builder for registering shared [`Storage`] values before building a [`Bot`].
+pub struct BotBuilderStorage {
+    builder: BotBuilder,
 }
 
 /// Bot runtime state and routing tables.
@@ -53,6 +62,7 @@ pub struct Bot {
     /// The application ID resolved from Discord.
     pub application_id: Id<ApplicationMarker>,
     pub(crate) shard: Shard,
+    pub(crate) storage: Storage,
 
     event_router: StaticRouter<&'static str, EventHandlerMetadata>,
     slash_router: StaticRouter<&'static str, SlashCommandMetadata>,
@@ -75,12 +85,21 @@ impl BotBuilder {
     pub fn new(token: impl Into<String>) -> Self {
         Self {
             token: token.into(),
+            storage: HashMap::new(),
         }
+    }
+
+    /// Returns a fluent builder for registering shared storage values.
+    pub fn storage(self) -> BotBuilderStorage {
+        BotBuilderStorage { builder: self }
     }
 
     /// Clones the builder state into a fresh builder.
     pub fn share(self) -> BotBuilder {
-        BotBuilder { token: self.token }
+        BotBuilder {
+            token: self.token,
+            storage: HashMap::new(),
+        }
     }
 
     /// Builds a bot by connecting to Discord and preparing routers.
@@ -118,6 +137,7 @@ impl BotBuilder {
             client: Client::new(http),
             shard,
             application_id,
+            storage: Storage::new(self.storage),
             event_router,
             slash_router,
             user_context_router,
@@ -133,5 +153,23 @@ impl Bot {
     /// Constructs a bot from the provided builder.
     pub async fn new(config: BotBuilder) -> Result<Self> {
         Ok(config.build().await?)
+    }
+}
+
+impl BotBuilderStorage {
+    /// Inserts a value into the bot's shared storage.
+    pub fn insert<T: Send + Sync + 'static>(mut self, value: T) -> Self {
+        Storage::insert_value(&mut self.builder.storage, value);
+        self
+    }
+
+    /// Builds a bot by connecting to Discord and preparing routers.
+    pub async fn build(self) -> Result<Bot> {
+        self.builder.build().await
+    }
+
+    /// Returns the underlying [`BotBuilder`] without building.
+    pub fn finish(self) -> BotBuilder {
+        self.builder
     }
 }

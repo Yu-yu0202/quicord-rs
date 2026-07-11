@@ -16,6 +16,7 @@ pub(crate) mod r#trait;
 pub mod view;
 
 use crate::core::client::Client;
+use crate::core::storage::Storage;
 use twilight_model::{
     application::interaction::{Interaction, InteractionData},
     channel::{Channel, Message},
@@ -38,14 +39,24 @@ pub use twilight_util::builder::InteractionResponseDataBuilder as InteractionRes
 pub struct InteractionContext {
     /// The bot client.
     pub client: Client,
+    bot_storage: Storage,
     /// The raw gateway event.
     pub event: Event,
 }
 
 impl InteractionContext {
     /// Creates a new interaction context.
-    pub(crate) fn new(client: Client, event: Event) -> Self {
-        Self { client, event }
+    pub(crate) fn new(client: Client, storage: Storage, event: Event) -> Self {
+        Self {
+            client,
+            bot_storage: storage,
+            event,
+        }
+    }
+
+    /// Returns a shared reference to a value from bot storage.
+    pub fn storage<T: Send + Sync + 'static>(&self) -> anyhow::Result<&T> {
+        self.bot_storage.require::<T>()
     }
 
     /// Returns the underlying interaction if the event is an interaction create.

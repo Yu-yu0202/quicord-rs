@@ -8,6 +8,7 @@
  */
 
 use crate::core::client::Client;
+use crate::core::storage::Storage;
 use twilight_model::gateway::event::Event;
 
 /// Future returned by event handlers.
@@ -21,14 +22,24 @@ pub type EventHandler = fn(EventContext) -> EventFuture;
 pub struct EventContext {
     /// The bot client.
     pub client: Client,
+    bot_storage: Storage,
     /// The raw gateway event.
     pub event: Event,
 }
 
 impl EventContext {
     /// Creates a new event context.
-    pub fn new(client: Client, event: Event) -> Self {
-        Self { client, event }
+    pub fn new(client: Client, storage: Storage, event: Event) -> Self {
+        Self {
+            client,
+            bot_storage: storage,
+            event,
+        }
+    }
+
+    /// Returns a shared reference to a value from bot storage.
+    pub fn storage<T: Send + Sync + 'static>(&self) -> anyhow::Result<&T> {
+        self.bot_storage.require::<T>()
     }
 }
 

@@ -44,6 +44,19 @@ impl TextInputBuilder {
         )
     }
 
+    pub fn custom_id(mut self, custom_id: impl Into<String>) -> Self {
+        self.0.custom_id = custom_id.into();
+        self
+    }
+
+    pub fn style(
+        mut self,
+        style: twilight_model::channel::message::component::TextInputStyle,
+    ) -> Self {
+        self.0.style = style;
+        self
+    }
+
     pub fn id(mut self, id: impl Into<i32>) -> Self {
         self.0.id = Some(id.into());
         self

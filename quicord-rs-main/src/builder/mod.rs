@@ -7,6 +7,8 @@
  * https://mozilla.org/MPL/2.0/.
  */
 pub mod button;
+pub mod color;
+pub mod embed;
 pub mod modal;
 pub mod response;
 pub mod text_input;

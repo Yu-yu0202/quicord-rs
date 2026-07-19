@@ -12,7 +12,7 @@ use twilight_model::channel::message::Component;
 pub struct TextInputBuilder(TextInput);
 
 impl TextInputBuilder {
-    fn new(
+    pub fn new(
         custom_id: impl Into<String>,
         style: twilight_model::channel::message::component::TextInputStyle,
     ) -> Self {

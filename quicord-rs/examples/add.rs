@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: CC0-1.0
 use quicord_rs::macros::slash_command;
-use quicord_rs::{builder::response::ResponseBuilder, BotBuilder, InteractionContext};
+use quicord_rs::{BotBuilder, InteractionContext, builder::response::ResponseBuilder};
 
 #[slash_command(name = "add", description = "Adds two numbers together!", scope = global, options = [
     Integer("num1"),

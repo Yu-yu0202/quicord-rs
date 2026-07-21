@@ -3,7 +3,9 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use quicord_rs::macros::{event, slash_command};
-use quicord_rs::{builder::response::ResponseBuilder, BotBuilder, EventContext, InteractionContext};
+use quicord_rs::{
+    BotBuilder, EventContext, InteractionContext, builder::response::ResponseBuilder,
+};
 
 /// Shared data registered once at startup and read from handlers.
 struct AppState {

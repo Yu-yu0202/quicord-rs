@@ -15,7 +15,6 @@ pub use quicord_rs_main::*;
 /// Reexport of `linkme` for distributed slice definitions.
 pub use linkme;
 
-
 #[allow(unused_imports)]
 #[cfg(feature = "macros")]
 /// Reexport of the attribute macros.

@@ -6,10 +6,11 @@
  * was not distributed with this file, You can obtain one at
  * https://mozilla.org/MPL/2.0/.
  */
+
 use quicord_rs::{
-    builder::{button::ButtonBuilder, response::ResponseBuilder}, macros::{button, slash_command},
-    BotBuilder,
-    InteractionContext,
+    BotBuilder, InteractionContext,
+    builder::{button::ButtonBuilder, response::ResponseBuilder},
+    macros::{button, slash_command},
 };
 
 #[slash_command(name = "show_button", description = "Show a button", scope = global)]

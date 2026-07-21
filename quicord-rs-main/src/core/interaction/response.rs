@@ -6,8 +6,9 @@
  * was not distributed with this file, You can obtain one at
  * https://mozilla.org/MPL/2.0/.
  */
-use crate::core::interaction::r#trait::IntoResponse;
+
 use crate::InteractionContext;
+use crate::core::interaction::r#trait::IntoResponse;
 use twilight_model::channel::message::MessageFlags;
 use twilight_model::http::interaction::{
     InteractionResponse, InteractionResponseData, InteractionResponseType,

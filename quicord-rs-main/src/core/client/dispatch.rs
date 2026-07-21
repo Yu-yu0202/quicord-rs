@@ -6,8 +6,9 @@
  * was not distributed with this file, You can obtain one at
  * https://mozilla.org/MPL/2.0/.
  */
-use crate::core::client::router::RoutedHandler;
+
 use crate::core::client::Client;
+use crate::core::client::router::RoutedHandler;
 use crate::core::storage::Storage;
 use crate::{Bot, EventContext, InteractionContext};
 use lazy_static::lazy_static;

@@ -6,15 +6,16 @@
  * was not distributed with this file, You can obtain one at
  * https://mozilla.org/MPL/2.0/.
  */
+
+use crate::Bot;
 use crate::command::context::{MessageContextCommandMetadata, UserContextCommandMetadata};
 use crate::command::message_component::{ButtonMetadata, SelectMenuMetadata};
 use crate::command::modal::ModalMetadata;
 use crate::command::slash::SlashCommandMetadata;
 use crate::core::event::EventHandlerMetadata;
-use crate::Bot;
 use twilight_model::application::command::CommandType;
-use twilight_model::application::interaction::message_component::MessageComponentInteractionData;
 use twilight_model::application::interaction::InteractionData;
+use twilight_model::application::interaction::message_component::MessageComponentInteractionData;
 use twilight_model::channel::message::component::ComponentType;
 use twilight_model::gateway::event::Event;
 

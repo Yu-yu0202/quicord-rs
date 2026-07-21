@@ -6,10 +6,11 @@
  * was not distributed with this file, You can obtain one at
  * https://mozilla.org/MPL/2.0/.
  */
-use crate::core::interaction::view::CommandOptionsView;
+
 use crate::InteractionContext;
-use twilight_model::application::interaction::application_command::CommandData;
+use crate::core::interaction::view::CommandOptionsView;
 use twilight_model::application::interaction::InteractionData;
+use twilight_model::application::interaction::application_command::CommandData;
 
 impl InteractionContext {
     /// Returns slash command data for application command interactions.

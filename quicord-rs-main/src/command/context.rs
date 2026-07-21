@@ -7,7 +7,7 @@
  * https://mozilla.org/MPL/2.0/.
  */
 
-use crate::command::{scope::CommandScope, CommandHandler};
+use crate::command::{CommandHandler, scope::CommandScope};
 
 /// Metadata describing a registered user context command.
 pub struct UserContextCommandMetadata {

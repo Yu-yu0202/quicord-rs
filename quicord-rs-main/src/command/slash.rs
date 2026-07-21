@@ -11,7 +11,7 @@
 
 pub use twilight_model::application::command::CommandOptionType;
 
-use crate::command::{scope::CommandScope, CommandHandler};
+use crate::command::{CommandHandler, scope::CommandScope};
 
 /// Metadata for a single slash command option.
 #[derive(Clone, Copy)]

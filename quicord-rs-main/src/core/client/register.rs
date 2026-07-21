@@ -6,10 +6,11 @@
  * was not distributed with this file, You can obtain one at
  * https://mozilla.org/MPL/2.0/.
  */
+
+use crate::Bot;
 use crate::command::context::{MESSAGE_CONTEXT_COMMANDS, USER_CONTEXT_COMMANDS};
 use crate::command::scope::CommandScope;
 use crate::command::slash::SLASH_COMMANDS;
-use crate::Bot;
 use rustc_hash::{FxBuildHasher, FxHashMap};
 use tracing::info;
 use twilight_model::application::command::{Command, CommandOption, CommandType};

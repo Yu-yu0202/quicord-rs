@@ -6,12 +6,13 @@
  * was not distributed with this file, You can obtain one at
  * https://mozilla.org/MPL/2.0/.
  */
+
 use crate::core::interaction::view::option::view::HasCustomId;
 use twilight_model::application::interaction::modal::ModalInteractionComponent;
+use twilight_model::id::Id;
 use twilight_model::id::marker::{
     AttachmentMarker, ChannelMarker, GenericMarker, RoleMarker, UserMarker,
 };
-use twilight_model::id::Id;
 
 /// A view for accessing the modal input of an interaction.
 pub struct ModalView<'a> {

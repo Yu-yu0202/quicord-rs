@@ -6,12 +6,13 @@
  * was not distributed with this file, You can obtain one at
  * https://mozilla.org/MPL/2.0/.
  */
-use twilight_model::channel::message::component::{ActionRow, Button};
+
 use twilight_model::channel::message::Component;
+use twilight_model::channel::message::component::{ActionRow, Button};
 
 pub use twilight_model::channel::message::component::ButtonStyle;
-use twilight_model::id::marker::SkuMarker;
 use twilight_model::id::Id;
+use twilight_model::id::marker::SkuMarker;
 
 pub struct ButtonBuilder(Button);
 

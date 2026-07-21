@@ -16,6 +16,7 @@ pub mod thumbnail;
 pub mod video;
 
 use crate::util::timestamp::now_timestamp;
+use twilight_model::channel::message::Embed;
 use twilight_model::channel::message::embed::{
     EmbedAuthor, EmbedField, EmbedFooter, EmbedImage, EmbedProvider, EmbedThumbnail, EmbedVideo,
 };

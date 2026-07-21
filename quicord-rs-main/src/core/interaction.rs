@@ -6,6 +6,7 @@
  * was not distributed with this file, You can obtain one at
  * https://mozilla.org/MPL/2.0/.
  */
+
 mod command;
 mod component;
 mod modal;
@@ -22,17 +23,17 @@ use twilight_model::{
     channel::{Channel, Message},
     gateway::event::Event,
     id::{
-        marker::{ChannelMarker, GuildMarker, InteractionMarker, UserMarker},
         Id,
+        marker::{ChannelMarker, GuildMarker, InteractionMarker, UserMarker},
     },
     user::User,
 };
+pub use twilight_util::builder::InteractionResponseDataBuilder as InteractionResponseBuilder;
 pub use twilight_util::builder::embed::EmbedBuilder;
 pub use twilight_util::builder::message::{
     ActionRowBuilder, ButtonBuilder, ContainerBuilder, SelectMenuBuilder, SelectMenuOptionBuilder,
     TextDisplayBuilder,
 };
-pub use twilight_util::builder::InteractionResponseDataBuilder as InteractionResponseBuilder;
 
 /// Context passed to interaction handlers.
 #[derive(Clone)]

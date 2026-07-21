@@ -9,9 +9,9 @@
 
 use proc_macro2::Span;
 use syn::{
-    parse::{Parse, ParseStream}, punctuated::Punctuated, Error, Expr, ExprCall, ExprLit, ExprPath, Lit, LitStr, Meta, Path,
-    Result,
-    Token,
+    Error, Expr, ExprCall, ExprLit, ExprPath, Lit, LitStr, Meta, Path, Result, Token,
+    parse::{Parse, ParseStream},
+    punctuated::Punctuated,
 };
 
 /// Parsed arguments for event attributes.

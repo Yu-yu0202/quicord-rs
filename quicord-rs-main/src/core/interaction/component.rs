@@ -6,9 +6,10 @@
  * was not distributed with this file, You can obtain one at
  * https://mozilla.org/MPL/2.0/.
  */
+
 use crate::InteractionContext;
-use twilight_model::application::interaction::message_component::MessageComponentInteractionData;
 use twilight_model::application::interaction::InteractionData;
+use twilight_model::application::interaction::message_component::MessageComponentInteractionData;
 
 impl InteractionContext {
     /// Returns message component data for component interactions.

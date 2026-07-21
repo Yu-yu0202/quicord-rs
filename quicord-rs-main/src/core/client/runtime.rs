@@ -6,14 +6,15 @@
  * was not distributed with this file, You can obtain one at
  * https://mozilla.org/MPL/2.0/.
  */
+
+use crate::Bot;
 use crate::core::client::tls;
 use crate::util::logger::init_logger;
-use crate::Bot;
-use tokio::signal::unix::{signal, SignalKind};
+use tokio::signal::unix::{SignalKind, signal};
 use tracing::{debug, error, info};
 use twilight_gateway::{EventTypeFlags, StreamExt};
-use twilight_model::gateway::event::Event;
 use twilight_model::gateway::CloseFrame;
+use twilight_model::gateway::event::Event;
 
 impl Bot {
     /// Registers commands and runs the event loop on the current task.

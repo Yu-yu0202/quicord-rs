@@ -6,17 +6,18 @@
  * was not distributed with this file, You can obtain one at
  * https://mozilla.org/MPL/2.0/.
  */
+
 use crate::command::message_component::{ButtonMetadata, SelectMenuMetadata};
 use crate::command::modal::ModalMetadata;
 use crate::{
     command::{
         context::{
-            MessageContextCommandMetadata, UserContextCommandMetadata, MESSAGE_CONTEXT_COMMANDS,
-            USER_CONTEXT_COMMANDS,
+            MESSAGE_CONTEXT_COMMANDS, MessageContextCommandMetadata, USER_CONTEXT_COMMANDS,
+            UserContextCommandMetadata,
         },
-        slash::{SlashCommandMetadata, SLASH_COMMANDS},
+        slash::{SLASH_COMMANDS, SlashCommandMetadata},
     },
-    core::event::{EventHandlerMetadata, EVENT_HANDLERS},
+    core::event::{EVENT_HANDLERS, EventHandlerMetadata},
     core::storage::Storage,
     util::static_router::StaticRouter,
 };
@@ -28,7 +29,7 @@ use twilight_gateway::{ConfigBuilder, Intents, Shard};
 use twilight_http::Client as HttpClient;
 use twilight_model::{
     gateway::ShardId,
-    id::{marker::ApplicationMarker, Id},
+    id::{Id, marker::ApplicationMarker},
 };
 
 mod dispatch;

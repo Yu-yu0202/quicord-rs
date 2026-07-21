@@ -6,10 +6,11 @@
  * was not distributed with this file, You can obtain one at
  * https://mozilla.org/MPL/2.0/.
  */
-use crate::core::interaction::view::ModalView;
+
 use crate::InteractionContext;
-use twilight_model::application::interaction::modal::ModalInteractionData;
+use crate::core::interaction::view::ModalView;
 use twilight_model::application::interaction::InteractionData;
+use twilight_model::application::interaction::modal::ModalInteractionData;
 
 impl InteractionContext {
     /// Returns modal submit data for modal interactions.

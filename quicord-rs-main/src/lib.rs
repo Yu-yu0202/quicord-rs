@@ -19,7 +19,6 @@ pub mod core;
 /// Reexports of the primary bot types from [`core`].
 pub use core::{Bot, BotBuilder, BotBuilderStorage, EventContext, InteractionContext, Storage};
 
-
 ///
 pub mod builder;
 
@@ -28,7 +27,6 @@ pub mod util;
 
 /// Reexport of the `linkme` crate used for distributed slices.
 pub use linkme;
-
 
 /// Reexports commonly used tracing macros.
 pub mod log {

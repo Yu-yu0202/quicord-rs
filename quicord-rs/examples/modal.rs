@@ -8,9 +8,9 @@
  */
 
 use quicord_rs::{
-    builder::{modal::ModalBuilder, text_input::TextInputBuilder}, macros::{modal, slash_command},
-    BotBuilder,
-    InteractionContext,
+    BotBuilder, InteractionContext,
+    builder::{modal::ModalBuilder, text_input::TextInputBuilder},
+    macros::{modal, slash_command},
 };
 
 #[slash_command(name = "show_modal", description = "Show a modal", scope = global)]

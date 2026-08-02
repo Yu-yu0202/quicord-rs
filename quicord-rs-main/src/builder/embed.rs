@@ -20,7 +20,6 @@ use twilight_model::channel::message::Embed;
 use twilight_model::channel::message::embed::{
     EmbedAuthor, EmbedField, EmbedFooter, EmbedImage, EmbedProvider, EmbedThumbnail, EmbedVideo,
 };
-use twilight_model::channel::message::Embed;
 use twilight_model::util::Timestamp;
 
 #[derive(Clone, Eq, PartialEq, Debug)]

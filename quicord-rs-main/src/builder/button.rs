@@ -30,6 +30,11 @@ impl ButtonBuilder {
         })
     }
 
+    pub fn style(mut self, style: ButtonStyle) -> Self {
+        self.0.style = style;
+        self
+    }
+
     pub fn custom_id(mut self, custom_id: impl Into<String>) -> Self {
         self.0.custom_id = Some(custom_id.into());
         self

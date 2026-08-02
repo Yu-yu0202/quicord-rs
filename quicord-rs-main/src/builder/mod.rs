@@ -9,6 +9,7 @@
 
 pub mod button;
 pub mod color;
+pub mod componentsv2;
 pub mod embed;
 pub mod modal;
 pub mod response;

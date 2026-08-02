@@ -6,6 +6,7 @@
  * was not distributed with this file, You can obtain one at
  * https://mozilla.org/MPL/2.0/.
  */
+
 use twilight_model::channel::message::embed::EmbedImage;
 
 #[derive(Clone, Eq, PartialEq, Debug)]

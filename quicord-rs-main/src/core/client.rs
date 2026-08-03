@@ -153,7 +153,7 @@ impl BotBuilder {
 impl Bot {
     /// Constructs a bot from the provided builder.
     pub async fn new(config: BotBuilder) -> Result<Self> {
-        Ok(config.build().await?)
+        config.build().await
     }
 }
 

@@ -11,7 +11,7 @@
 static INIT_RUSTLS: std::sync::Once = std::sync::Once::new();
 
 /// Installs the default rustls crypto provider once per process.
-pub(crate) fn init_rustls() -> () {
+pub(crate) fn init_rustls() {
     INIT_RUSTLS.call_once(|| {
         let _ = rustls::crypto::ring::default_provider().install_default();
     });

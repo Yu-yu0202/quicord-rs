@@ -28,7 +28,7 @@ impl<K: 'static + Hash + Eq, V: 'static> StaticRouter<K, V> {
 
         let mut table = FxHashMap::<K, &'static V>::with_capacity_and_hasher(
             items.size_hint().0,
-            FxBuildHasher::default(),
+            FxBuildHasher,
         );
 
         for item in items {

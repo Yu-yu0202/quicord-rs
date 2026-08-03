@@ -19,6 +19,12 @@ use twilight_model::poll::Poll;
 
 pub struct ResponseBuilder(InteractionResponseData);
 
+impl Default for ResponseBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ResponseBuilder {
     pub fn new() -> Self {
         Self(InteractionResponseData {

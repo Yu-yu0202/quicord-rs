@@ -97,11 +97,7 @@ impl InteractionContext {
 
     /// Returns the channel ID if available.
     pub fn channel_id(&self) -> Option<Id<ChannelMarker>> {
-        if let Some(channel) = self.channel() {
-            Some(channel.id)
-        } else {
-            None
-        }
+        self.channel().map(|channel| channel.id)
     }
 
     /// Returns the message attached to the interaction, if any.

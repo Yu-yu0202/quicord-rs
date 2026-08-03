@@ -30,7 +30,7 @@ impl PendingCommands {
     pub(crate) fn new() -> Self {
         Self {
             global: Vec::new(),
-            guild: GuildCommandMap::with_hasher(FxBuildHasher::default()),
+            guild: GuildCommandMap::with_hasher(FxBuildHasher),
         }
     }
 
@@ -47,7 +47,7 @@ impl PendingCommands {
                 for guild_id in guild_ids {
                     self.guild
                         .entry(*guild_id)
-                        .or_insert_with(Vec::new)
+                        .or_default()
                         .push(command.clone());
                 }
             }

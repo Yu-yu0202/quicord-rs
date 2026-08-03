@@ -19,7 +19,6 @@ pub mod core;
 /// Reexports of the primary bot types from [`core`].
 pub use core::{Bot, BotBuilder, BotBuilderStorage, EventContext, InteractionContext, Storage};
 
-///
 pub mod builder;
 
 /// Utility helpers used internally by the runtime.

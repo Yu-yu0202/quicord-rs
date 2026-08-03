@@ -155,7 +155,7 @@ impl Bot {
     }
 }
 
-fn log_executor_info(context: &InteractionContext) -> () {
+fn log_executor_info(context: &InteractionContext) {
     if let Some(user) = context.author() {
         let display_name = user.global_name.as_deref().unwrap_or("<unknown>");
         let user_name = user.name.as_str();

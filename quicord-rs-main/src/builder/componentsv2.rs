@@ -48,7 +48,7 @@ impl ComponentsV2Builder {
 
     pub fn components(
         mut self,
-        components: impl IntoIterator<Item=impl Into<Component>>,
+        components: impl IntoIterator<Item = impl Into<Component>>,
     ) -> Self {
         self.0
             .components
@@ -63,7 +63,7 @@ impl ComponentsV2Builder {
 
     pub fn text_inputs(
         mut self,
-        text_inputs: impl IntoIterator<Item=impl IntoTextInput>,
+        text_inputs: impl IntoIterator<Item = impl IntoTextInput>,
     ) -> Self {
         self.0
             .components
@@ -76,7 +76,7 @@ impl ComponentsV2Builder {
         self
     }
 
-    pub fn buttons(mut self, buttons: impl IntoIterator<Item=impl IntoButton>) -> Self {
+    pub fn buttons(mut self, buttons: impl IntoIterator<Item = impl IntoButton>) -> Self {
         self.0
             .components
             .extend(buttons.into_iter().map(|x| x.into_button().into()));

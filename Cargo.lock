@@ -739,7 +739,6 @@ dependencies = [
  "anyhow",
  "chrono",
  "futures-util",
- "lazy_static",
  "linkme",
  "rustc-hash",
  "rustls",

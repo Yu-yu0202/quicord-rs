@@ -17,13 +17,14 @@ use crate::{
         },
         slash::{SLASH_COMMANDS, SlashCommandMetadata},
     },
-    core::event::{EVENT_HANDLERS, EventHandlerMetadata},
+    core::event::{EVENT_HANDLERS, EventHookId, EventRegistry, INTERNAL_EVENT_HANDLERS},
     core::storage::Storage,
     util::static_router::StaticRouter,
 };
 use anyhow::Result;
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
+use std::future::Future;
 use std::sync::Arc;
 use twilight_gateway::{ConfigBuilder, Intents, Shard};
 use twilight_http::Client as HttpClient;
@@ -65,7 +66,7 @@ pub struct Bot {
     pub(crate) shard: Shard,
     pub(crate) storage: Storage,
 
-    event_router: StaticRouter<&'static str, EventHandlerMetadata>,
+    event_registry: EventRegistry,
     slash_router: StaticRouter<&'static str, SlashCommandMetadata>,
     user_context_router: StaticRouter<&'static str, UserContextCommandMetadata>,
     message_context_router: StaticRouter<&'static str, MessageContextCommandMetadata>,
@@ -78,6 +79,42 @@ impl Client {
     /// Creates a new client wrapper from an HTTP client.
     pub(crate) fn new(http: Arc<HttpClient>) -> Self {
         Self { http }
+    }
+}
+
+impl Bot {
+    /// Registers an internal event hook for this bot.
+    #[allow(dead_code)]
+    pub(crate) fn register_event<F, Fut>(
+        &self,
+        event_type: impl AsRef<str>,
+        handler: F,
+    ) -> EventHookId
+    where
+        F: Fn(crate::EventContext) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = anyhow::Result<()>> + Send + 'static,
+    {
+        self.event_registry.register(event_type, handler, false)
+    }
+
+    /// Registers an internal event hook that runs at most once for this bot.
+    #[allow(dead_code)]
+    pub(crate) fn register_event_once<F, Fut>(
+        &self,
+        event_type: impl AsRef<str>,
+        handler: F,
+    ) -> EventHookId
+    where
+        F: Fn(crate::EventContext) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = anyhow::Result<()>> + Send + 'static,
+    {
+        self.event_registry.register_once(event_type, handler)
+    }
+
+    /// Removes an internal event hook from future dispatches.
+    #[allow(dead_code)]
+    pub(crate) fn unregister_event(&self, id: EventHookId) -> bool {
+        self.event_registry.unregister(id)
     }
 }
 
@@ -116,7 +153,8 @@ impl BotBuilder {
 
         let application_id = http.current_user_application().await?.model().await?.id;
 
-        let event_router = StaticRouter::new(EVENT_HANDLERS.iter(), |metadata| metadata.event_type);
+        let event_registry =
+            EventRegistry::from_static(EVENT_HANDLERS.iter().chain(INTERNAL_EVENT_HANDLERS.iter()));
         let slash_router = StaticRouter::new(SLASH_COMMANDS.iter(), |metadata| metadata.name);
         let user_context_router =
             StaticRouter::new(USER_CONTEXT_COMMANDS.iter(), |metadata| metadata.name);
@@ -139,7 +177,7 @@ impl BotBuilder {
             shard,
             application_id,
             storage: Storage::new(self.storage),
-            event_router,
+            event_registry,
             slash_router,
             user_context_router,
             message_context_router,

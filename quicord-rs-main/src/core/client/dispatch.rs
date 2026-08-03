@@ -9,55 +9,46 @@
 
 use crate::core::client::Client;
 use crate::core::client::router::RoutedHandler;
+use crate::core::event::EventRegistry;
 use crate::core::storage::Storage;
 use crate::{Bot, EventContext, InteractionContext};
-use lazy_static::lazy_static;
-use std::collections::HashSet;
-use std::sync::Mutex;
 use tracing::{info, warn};
 use twilight_model::gateway::event::Event;
-
-lazy_static! {
-    static ref EXECUTED_ONCE_EVENT_HANDLERS: Mutex<HashSet<usize>> = Mutex::new(HashSet::new());
-}
 
 impl Bot {
     /// Dispatches a routed event to the associated handler.
     pub(crate) async fn handle_routed_event(
         client: Client,
         storage: Storage,
+        event_registry: EventRegistry,
         handler: RoutedHandler,
         event: Event,
     ) {
         match handler {
-            RoutedHandler::Event(event_meta) => {
-                let handler_id = event_meta.handler as usize;
-
-                if event_meta.once {
-                    let mut executed = EXECUTED_ONCE_EVENT_HANDLERS
-                        .lock()
-                        .expect("Failed to access executed handlers list");
-
-                    if executed.contains(&handler_id) {
-                        drop(executed);
-                        return;
+            RoutedHandler::Event(event_route) => {
+                for hook in event_route.hooks {
+                    if !hook.should_execute() {
+                        continue;
                     }
 
-                    executed.insert(handler_id);
-                    drop(executed);
-                }
-
-                info!("Handling event: {}", event_meta.event_type);
-                let context = EventContext::new(client, storage, event);
-                if let Err(e) = (event_meta.handler)(context).await {
-                    warn!("Error handling event {}: {:?}", event_meta.event_type, e);
-                } else {
-                    info!("Successfully handled event: {}", event_meta.event_type);
+                    info!("Handling event: {}", event_route.event_type);
+                    let context = EventContext::with_registry(
+                        client.clone(),
+                        storage.clone(),
+                        event.clone(),
+                        event_registry.clone(),
+                    );
+                    if let Err(e) = hook.invoke(context).await {
+                        warn!("Error handling event {}: {:?}", event_route.event_type, e);
+                    } else {
+                        info!("Successfully handled event: {}", event_route.event_type);
+                    }
                 }
             }
             RoutedHandler::Slash(command_meta) => {
                 info!("Handling slash command: /{}", command_meta.name);
-                let context = InteractionContext::new(client, storage.clone(), event);
+                let context =
+                    InteractionContext::new(client, storage.clone(), event, event_registry);
                 log_executor_info(&context);
                 if let Err(e) = (command_meta.run)(context).await {
                     warn!(
@@ -70,7 +61,8 @@ impl Bot {
             }
             RoutedHandler::UserContext(command_meta) => {
                 info!("Handling user context command: {}", command_meta.name);
-                let context = InteractionContext::new(client, storage.clone(), event);
+                let context =
+                    InteractionContext::new(client, storage.clone(), event, event_registry);
                 log_executor_info(&context);
                 if let Err(e) = (command_meta.run)(context).await {
                     warn!(
@@ -86,7 +78,8 @@ impl Bot {
             }
             RoutedHandler::MessageContext(command_meta) => {
                 info!("Handling message context command: {}", command_meta.name);
-                let context = InteractionContext::new(client, storage.clone(), event);
+                let context =
+                    InteractionContext::new(client, storage.clone(), event, event_registry);
                 log_executor_info(&context);
                 if let Err(e) = (command_meta.run)(context).await {
                     warn!(
@@ -102,7 +95,8 @@ impl Bot {
             }
             RoutedHandler::Modal(modal_meta) => {
                 info!("Handling modal submission: {}", modal_meta.custom_id);
-                let context = InteractionContext::new(client, storage.clone(), event);
+                let context =
+                    InteractionContext::new(client, storage.clone(), event, event_registry);
                 log_executor_info(&context);
                 if let Err(e) = (modal_meta.run)(context).await {
                     warn!(
@@ -118,7 +112,8 @@ impl Bot {
             }
             RoutedHandler::Button(button_meta) => {
                 info!("Handling button interaction: {}", button_meta.custom_id);
-                let context = InteractionContext::new(client, storage.clone(), event);
+                let context =
+                    InteractionContext::new(client, storage.clone(), event, event_registry);
                 log_executor_info(&context);
                 if let Err(e) = (button_meta.run)(context).await {
                     warn!(
@@ -137,7 +132,7 @@ impl Bot {
                     "Handling select menu interaction: {}",
                     select_menu_meta.custom_id
                 );
-                let context = InteractionContext::new(client, storage.clone(), event);
+                let context = InteractionContext::new(client, storage, event, event_registry);
                 log_executor_info(&context);
                 if let Err(e) = (select_menu_meta.run)(context).await {
                     warn!(

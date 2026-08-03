@@ -69,6 +69,7 @@ impl Bot {
                                 Self::handle_routed_event(
                                     self.client.clone(),
                                     self.storage.clone(),
+                                    self.event_registry.clone(),
                                     handler,
                                     event,
                                 )

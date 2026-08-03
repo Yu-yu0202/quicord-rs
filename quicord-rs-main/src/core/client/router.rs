@@ -12,7 +12,7 @@ use crate::command::context::{MessageContextCommandMetadata, UserContextCommandM
 use crate::command::message_component::{ButtonMetadata, SelectMenuMetadata};
 use crate::command::modal::ModalMetadata;
 use crate::command::slash::SlashCommandMetadata;
-use crate::core::event::EventHandlerMetadata;
+use crate::core::event::EventRoute;
 use twilight_model::application::command::CommandType;
 use twilight_model::application::interaction::InteractionData;
 use twilight_model::application::interaction::message_component::MessageComponentInteractionData;
@@ -22,7 +22,7 @@ use twilight_model::gateway::event::Event;
 /// Routed handler resolved from an incoming event.
 pub(crate) enum RoutedHandler {
     /// A gateway event handler.
-    Event(&'static EventHandlerMetadata),
+    Event(EventRoute),
     /// A slash command handler.
     Slash(&'static SlashCommandMetadata),
     /// A user context command handler.
@@ -104,7 +104,7 @@ impl Bot {
         event
             .kind()
             .name()
-            .and_then(|event_type| self.event_router.get(event_type))
+            .and_then(|event_type| self.event_registry.route(event_type))
             .map(RoutedHandler::Event)
     }
 }

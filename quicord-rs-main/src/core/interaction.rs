@@ -17,7 +17,9 @@ pub(crate) mod r#trait;
 pub mod view;
 
 use crate::core::client::Client;
+use crate::core::event::{EventContext, EventHookId, EventRegistry};
 use crate::core::storage::Storage;
+use std::future::Future;
 use twilight_model::{
     application::interaction::{Interaction, InteractionData},
     channel::{Channel, Message},
@@ -43,16 +45,57 @@ pub struct InteractionContext {
     bot_storage: Storage,
     /// The raw gateway event.
     pub event: Event,
+    event_registry: EventRegistry,
 }
 
 impl InteractionContext {
     /// Creates a new interaction context.
-    pub(crate) fn new(client: Client, storage: Storage, event: Event) -> Self {
+    pub(crate) fn new(
+        client: Client,
+        storage: Storage,
+        event: Event,
+        event_registry: EventRegistry,
+    ) -> Self {
         Self {
             client,
             bot_storage: storage,
             event,
+            event_registry,
         }
+    }
+
+    /// Registers an internal event hook for this bot.
+    #[allow(dead_code)]
+    pub(crate) fn register_event<F, Fut>(
+        &self,
+        event_type: impl AsRef<str>,
+        handler: F,
+    ) -> EventHookId
+    where
+        F: Fn(EventContext) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = anyhow::Result<()>> + Send + 'static,
+    {
+        self.event_registry.register(event_type, handler, false)
+    }
+
+    /// Registers an internal event hook that runs at most once for this bot.
+    #[allow(dead_code)]
+    pub(crate) fn register_event_once<F, Fut>(
+        &self,
+        event_type: impl AsRef<str>,
+        handler: F,
+    ) -> EventHookId
+    where
+        F: Fn(EventContext) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = anyhow::Result<()>> + Send + 'static,
+    {
+        self.event_registry.register_once(event_type, handler)
+    }
+
+    /// Removes an internal event hook from future dispatches.
+    #[allow(dead_code)]
+    pub(crate) fn unregister_event(&self, id: EventHookId) -> bool {
+        self.event_registry.unregister(id)
     }
 
     /// Returns a shared reference to a value from bot storage.

@@ -8,6 +8,7 @@
  */
 
 use crate::core::client::Client;
+use crate::core::context::HandlerContext;
 use crate::core::storage::Storage;
 use futures_util::FutureExt;
 use rustc_hash::FxHashMap;
@@ -29,10 +30,9 @@ pub type EventHandler = fn(EventContext) -> EventFuture;
 pub struct EventContext {
     /// The bot client.
     pub client: Client,
-    bot_storage: Storage,
     /// The raw gateway event.
     pub event: Event,
-    event_registry: EventRegistry,
+    handler: HandlerContext,
 }
 
 impl EventContext {
@@ -50,15 +50,14 @@ impl EventContext {
     ) -> Self {
         Self {
             client,
-            bot_storage: storage,
+            handler: HandlerContext::new(storage, event_registry),
             event,
-            event_registry,
         }
     }
 
     /// Returns a shared reference to a value from bot storage.
     pub fn storage<T: Send + Sync + 'static>(&self) -> anyhow::Result<&T> {
-        self.bot_storage.require::<T>()
+        self.handler.storage::<T>()
     }
 
     /// Registers an internal event hook for this bot.
@@ -72,7 +71,7 @@ impl EventContext {
         F: Fn(EventContext) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = anyhow::Result<()>> + Send + 'static,
     {
-        self.event_registry.register(event_type, handler, false)
+        self.handler.register_event(event_type, handler)
     }
 
     /// Registers an internal event hook that runs at most once for this bot.
@@ -86,13 +85,13 @@ impl EventContext {
         F: Fn(EventContext) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = anyhow::Result<()>> + Send + 'static,
     {
-        self.event_registry.register_once(event_type, handler)
+        self.handler.register_event_once(event_type, handler)
     }
 
     /// Removes an internal event hook from future dispatches.
     #[allow(dead_code)]
     pub(crate) fn unregister_event(&self, id: EventHookId) -> bool {
-        self.event_registry.unregister(id)
+        self.handler.unregister_event(id)
     }
 }
 
@@ -133,8 +132,10 @@ pub(crate) struct RegisteredEventHook {
 }
 
 impl RegisteredEventHook {
-    /// Claims a once hook for execution, or accepts every invocation for a normal hook.
-    pub(crate) fn should_execute(&self) -> bool {
+    /// Claims this hook for execution, or accepts every invocation for a normal hook.
+    ///
+    /// A claimed once hook remains consumed even when its handler later fails.
+    pub(crate) fn try_claim_execution(&self) -> bool {
         !self.once || !self.executed.swap(true, Ordering::AcqRel)
     }
 
@@ -154,6 +155,7 @@ pub(crate) struct EventRoute {
 struct EventRegistryState {
     next_id: u64,
     hooks: FxHashMap<String, Vec<Arc<RegisteredEventHook>>>,
+    hook_event_types: FxHashMap<EventHookId, String>,
 }
 
 /// Registry shared by a bot and its internal event handlers.
@@ -223,33 +225,33 @@ impl EventRegistry {
 
     /// Removes a hook from future event snapshots.
     pub(crate) fn unregister(&self, id: EventHookId) -> bool {
-        let mut state = self.state.write().expect("Failed to access event registry");
-        let mut empty_event_type = None;
-        let mut removed = false;
+        let mut state = self
+            .state
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let Some(event_type) = state.hook_event_types.remove(&id) else {
+            return false;
+        };
 
-        for (event_type, hooks) in &mut state.hooks {
-            let original_len = hooks.len();
-            hooks.retain(|hook| hook.id != id);
-            if hooks.len() != original_len {
-                removed = true;
-                if hooks.is_empty() {
-                    empty_event_type = Some(event_type.clone());
-                }
-                break;
-            }
-        }
-
-        if let Some(event_type) = empty_event_type {
+        let hooks = state
+            .hooks
+            .get_mut(&event_type)
+            .expect("registered hook must have an event entry");
+        hooks.retain(|hook| hook.id != id);
+        if hooks.is_empty() {
             state.hooks.remove(&event_type);
         }
 
-        removed
+        true
     }
 
     /// Takes a stable snapshot of all hooks matching an event type.
     pub(crate) fn route(&self, event_type: &str) -> Option<EventRoute> {
         let event_type = normalize_event_type(event_type);
-        let state = self.state.read().expect("Failed to access event registry");
+        let state = self
+            .state
+            .read()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         let hooks = state.hooks.get(&event_type)?.clone();
 
         Some(EventRoute { event_type, hooks })
@@ -262,13 +264,16 @@ impl EventRegistry {
         once: bool,
     ) -> EventHookId {
         let event_type = normalize_event_type(event_type);
-        let mut state = self.state.write().expect("Failed to access event registry");
+        let mut state = self
+            .state
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         let id = EventHookId(state.next_id);
         state.next_id = state.next_id.wrapping_add(1);
 
         state
             .hooks
-            .entry(event_type)
+            .entry(event_type.clone())
             .or_default()
             .push(Arc::new(RegisteredEventHook {
                 id,
@@ -276,6 +281,7 @@ impl EventRegistry {
                 executed: AtomicBool::new(false),
                 handler,
             }));
+        state.hook_event_types.insert(id, event_type);
 
         id
     }
@@ -320,7 +326,7 @@ mod tests {
         registry.register_fn("ready", handler, true);
 
         let route = registry.route("READY").unwrap();
-        assert!(route.hooks[0].should_execute());
-        assert!(!route.hooks[0].should_execute());
+        assert!(route.hooks[0].try_claim_execution());
+        assert!(!route.hooks[0].try_claim_execution());
     }
 }

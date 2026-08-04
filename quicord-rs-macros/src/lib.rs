@@ -11,6 +11,7 @@ use proc_macro::TokenStream;
 use syn::{ItemFn, parse_macro_input};
 
 mod args;
+mod definition;
 mod expand;
 
 /// Attribute macro that registers a slash command.
@@ -19,7 +20,7 @@ pub fn slash_command(attr: TokenStream, item: TokenStream) -> TokenStream {
     expand::command(
         parse_macro_input!(attr as args::CommandArgs),
         parse_macro_input!(item as ItemFn),
-        expand::CommandKind::Slash,
+        definition::CommandKind::Slash,
     )
     .into()
 }
@@ -30,7 +31,7 @@ pub fn message_context(attr: TokenStream, item: TokenStream) -> TokenStream {
     expand::command(
         parse_macro_input!(attr as args::CommandArgs),
         parse_macro_input!(item as ItemFn),
-        expand::CommandKind::MessageContext,
+        definition::CommandKind::MessageContext,
     )
     .into()
 }
@@ -41,7 +42,7 @@ pub fn user_context(attr: TokenStream, item: TokenStream) -> TokenStream {
     expand::command(
         parse_macro_input!(attr as args::CommandArgs),
         parse_macro_input!(item as ItemFn),
-        expand::CommandKind::UserContext,
+        definition::CommandKind::UserContext,
     )
     .into()
 }
@@ -62,7 +63,7 @@ pub fn modal(attr: TokenStream, item: TokenStream) -> TokenStream {
     expand::message_components(
         parse_macro_input!(attr as args::MessageComponentsArgs),
         parse_macro_input!(item as ItemFn),
-        expand::MessageComponentsKind::Modal,
+        definition::MessageComponentsKind::Modal,
     )
     .into()
 }
@@ -73,7 +74,7 @@ pub fn button(attr: TokenStream, item: TokenStream) -> TokenStream {
     expand::message_components(
         parse_macro_input!(attr as args::MessageComponentsArgs),
         parse_macro_input!(item as ItemFn),
-        expand::MessageComponentsKind::Button,
+        definition::MessageComponentsKind::Button,
     )
     .into()
 }
@@ -84,7 +85,7 @@ pub fn select_menu(attr: TokenStream, item: TokenStream) -> TokenStream {
     expand::message_components(
         parse_macro_input!(attr as args::MessageComponentsArgs),
         parse_macro_input!(item as ItemFn),
-        expand::MessageComponentsKind::SelectMenu,
+        definition::MessageComponentsKind::SelectMenu,
     )
     .into()
 }

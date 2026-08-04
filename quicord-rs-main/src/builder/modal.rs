@@ -11,6 +11,8 @@ use twilight_model::channel::message::Component;
 use twilight_model::channel::message::component::{ActionRow, SelectMenu, TextInput};
 use twilight_model::http::interaction::InteractionResponseData;
 
+use crate::builder::{push_item, push_items};
+
 pub struct ModalBuilder(InteractionResponseData);
 
 impl ModalBuilder {
@@ -24,26 +26,31 @@ impl ModalBuilder {
     }
 
     pub fn text_input(mut self, component: impl Into<TextInput>) -> Self {
-        let components = self.0.components.get_or_insert_with(Vec::new);
-        components.push(into_action_row_component(component.into()));
+        push_item(
+            &mut self.0.components,
+            into_action_row_component(component.into()),
+        );
         self
     }
 
     pub fn select_menu(mut self, component: impl Into<SelectMenu>) -> Self {
-        let components = self.0.components.get_or_insert_with(Vec::new);
-        components.push(into_action_row_component(component.into()));
+        push_item(
+            &mut self.0.components,
+            into_action_row_component(component.into()),
+        );
         self
     }
 
     pub fn action_row(mut self, component: impl Into<ActionRow>) -> Self {
-        let components = self.0.components.get_or_insert_with(Vec::new);
-        components.push(component.into().into());
+        push_item(
+            &mut self.0.components,
+            Component::ActionRow(component.into()),
+        );
         self
     }
 
     pub fn component(mut self, component: impl Into<Component>) -> Self {
-        let components = self.0.components.get_or_insert_with(Vec::new);
-        components.push(component.into());
+        push_item(&mut self.0.components, component.into());
         self
     }
 
@@ -51,8 +58,10 @@ impl ModalBuilder {
         mut self,
         components: impl IntoIterator<Item = impl Into<Component>>,
     ) -> Self {
-        let components_vec = self.0.components.get_or_insert_with(Vec::new);
-        components_vec.extend(components.into_iter().map(|c| c.into()));
+        push_items(
+            &mut self.0.components,
+            components.into_iter().map(Into::into),
+        );
         self
     }
 

@@ -17,7 +17,10 @@ pub mod command;
 pub mod core;
 
 /// Reexports of the primary bot types from [`core`].
-pub use core::{Bot, BotBuilder, BotBuilderStorage, EventContext, InteractionContext, Storage};
+pub use core::{
+    Bot, BotBuilder, BotBuilderStorage, EventContext, GatewayRetryPolicy, InteractionContext,
+    Storage,
+};
 
 pub mod builder;
 
@@ -26,6 +29,8 @@ pub mod util;
 
 /// Reexport of the `linkme` crate used for distributed slices.
 pub use linkme;
+/// Reexport of Twilight's Discord model types used by macro expansions.
+pub use twilight_model;
 
 /// Reexports commonly used tracing macros.
 pub mod log {

@@ -17,6 +17,7 @@ pub(crate) mod r#trait;
 pub mod view;
 
 use crate::core::client::Client;
+use crate::core::context::HandlerContext;
 use crate::core::event::{EventContext, EventHookId, EventRegistry};
 use crate::core::storage::Storage;
 use std::future::Future;
@@ -42,10 +43,9 @@ pub use twilight_util::builder::message::{
 pub struct InteractionContext {
     /// The bot client.
     pub client: Client,
-    bot_storage: Storage,
+    handler: HandlerContext,
     /// The raw gateway event.
     pub event: Event,
-    event_registry: EventRegistry,
 }
 
 impl InteractionContext {
@@ -58,9 +58,8 @@ impl InteractionContext {
     ) -> Self {
         Self {
             client,
-            bot_storage: storage,
+            handler: HandlerContext::new(storage, event_registry),
             event,
-            event_registry,
         }
     }
 
@@ -75,7 +74,7 @@ impl InteractionContext {
         F: Fn(EventContext) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = anyhow::Result<()>> + Send + 'static,
     {
-        self.event_registry.register(event_type, handler, false)
+        self.handler.register_event(event_type, handler)
     }
 
     /// Registers an internal event hook that runs at most once for this bot.
@@ -89,18 +88,18 @@ impl InteractionContext {
         F: Fn(EventContext) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = anyhow::Result<()>> + Send + 'static,
     {
-        self.event_registry.register_once(event_type, handler)
+        self.handler.register_event_once(event_type, handler)
     }
 
     /// Removes an internal event hook from future dispatches.
     #[allow(dead_code)]
     pub(crate) fn unregister_event(&self, id: EventHookId) -> bool {
-        self.event_registry.unregister(id)
+        self.handler.unregister_event(id)
     }
 
     /// Returns a shared reference to a value from bot storage.
     pub fn storage<T: Send + Sync + 'static>(&self) -> anyhow::Result<&T> {
-        self.bot_storage.require::<T>()
+        self.handler.storage::<T>()
     }
 
     /// Returns the underlying interaction if the event is an interaction create.

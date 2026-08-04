@@ -13,46 +13,48 @@ use twilight_model::channel::message::MessageFlags;
 use twilight_model::http::interaction::{
     InteractionResponse, InteractionResponseData, InteractionResponseType,
 };
+use twilight_model::id::{
+    Id,
+    marker::{ApplicationMarker, InteractionMarker},
+};
 
 impl InteractionContext {
+    fn interaction_target(&self) -> Option<InteractionTarget<'_>> {
+        self.interaction().map(|interaction| InteractionTarget {
+            application_id: interaction.application_id,
+            id: interaction.id,
+            token: &interaction.token,
+        })
+    }
+
     /// Sends a channel message response for the interaction.
     pub async fn reply(&self, response: impl IntoResponse) -> anyhow::Result<()> {
-        if self.interaction().is_some() {
-            let data = response.into_response();
-
-            self.create_response(
-                InteractionResponseType::ChannelMessageWithSource,
-                Some(data),
-            )
-            .await?;
-        }
-
-        Ok(())
+        self.create_response(
+            InteractionResponseType::ChannelMessageWithSource,
+            Some(response.into_response()),
+        )
+        .await
     }
 
     /// Defers the initial response and optionally marks it ephemeral.
     pub async fn defer_reply(&self, ephemeral: bool) -> anyhow::Result<()> {
-        if self.interaction().is_some() {
-            self.create_response(
-                InteractionResponseType::DeferredChannelMessageWithSource,
-                ephemeral.then(ephemeral_response_data),
-            )
-            .await?;
-        }
-
-        Ok(())
+        self.create_response(
+            InteractionResponseType::DeferredChannelMessageWithSource,
+            ephemeral.then(ephemeral_response_data),
+        )
+        .await
     }
 
     /// Edits the original response message.
     pub async fn edit_reply(&self, response: impl IntoResponse) -> anyhow::Result<()> {
-        if let Some(interaction) = self.interaction() {
+        if let Some(target) = self.interaction_target() {
             let data = response.into_response();
             let json = serde_json::to_vec(&data)?;
 
             self.client
                 .http
-                .interaction(interaction.application_id)
-                .update_response(&interaction.token)
+                .interaction(target.application_id)
+                .update_response(target.token)
                 .payload_json(&json)
                 .await?;
         }
@@ -65,39 +67,26 @@ impl InteractionContext {
         &self,
         modal: impl Into<InteractionResponseData>,
     ) -> anyhow::Result<()> {
-        if self.interaction().is_some() {
-            let data = modal.into();
-
-            self.create_response(InteractionResponseType::Modal, Some(data))
-                .await?;
-        }
-
-        Ok(())
+        self.create_response(InteractionResponseType::Modal, Some(modal.into()))
+            .await
     }
 
     /// Updates the original response message.
     pub async fn update(&self, response: impl IntoResponse) -> anyhow::Result<()> {
-        if self.interaction().is_some() {
-            let data = response.into_response();
-
-            self.create_response(InteractionResponseType::UpdateMessage, Some(data))
-                .await?;
-        }
-
-        Ok(())
+        self.create_response(
+            InteractionResponseType::UpdateMessage,
+            Some(response.into_response()),
+        )
+        .await
     }
 
     /// Defers the update of the original response message and optionally marks it ephemeral.
     pub async fn defer_update(&self, ephemeral: bool) -> anyhow::Result<()> {
-        if self.interaction().is_some() {
-            self.create_response(
-                InteractionResponseType::DeferredUpdateMessage,
-                ephemeral.then(ephemeral_response_data),
-            )
-            .await?;
-        }
-
-        Ok(())
+        self.create_response(
+            InteractionResponseType::DeferredUpdateMessage,
+            ephemeral.then(ephemeral_response_data),
+        )
+        .await
     }
 
     /// Sends a raw interaction response to Discord.
@@ -106,18 +95,24 @@ impl InteractionContext {
         kind: InteractionResponseType,
         data: Option<InteractionResponseData>,
     ) -> anyhow::Result<()> {
-        if let Some(interaction) = self.interaction() {
+        if let Some(target) = self.interaction_target() {
             let payload = InteractionResponse { kind, data };
 
             self.client
                 .http
-                .interaction(interaction.application_id)
-                .create_response(interaction.id, &interaction.token, &payload)
+                .interaction(target.application_id)
+                .create_response(target.id, target.token, &payload)
                 .await?;
         }
 
         Ok(())
     }
+}
+
+struct InteractionTarget<'a> {
+    application_id: Id<ApplicationMarker>,
+    id: Id<InteractionMarker>,
+    token: &'a str,
 }
 
 /// Builds the payload used for ephemeral interaction responses.

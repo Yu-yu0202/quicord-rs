@@ -8,6 +8,7 @@
  */
 
 use proc_macro2::Span;
+use std::collections::HashSet;
 use syn::{
     Error, Expr, ExprCall, ExprLit, ExprPath, Lit, LitStr, Meta, Path, Result, Token,
     parse::{Parse, ParseStream},
@@ -38,7 +39,7 @@ pub(crate) enum ScopeArg {
     /// Register globally.
     Global,
     /// Register for the listed guild IDs.
-    Guild(Vec<LitStr>),
+    Guild(Vec<u64>),
 }
 
 /// Parsed metadata for a single slash command option.
@@ -103,7 +104,7 @@ impl Parse for CommandArgs {
                 other => {
                     return Err(Error::new_spanned(
                         ident,
-                        format!("unknown command attribute `{other}`"),
+                        format!("unknown event attribute `{other}`"),
                     ));
                 }
             }
@@ -143,7 +144,7 @@ impl Parse for EventArgs {
                 other => {
                     return Err(Error::new_spanned(
                         ident,
-                        format!("unknown command attribute `{other}`"),
+                        format!("unknown component attribute `{other}`"),
                     ));
                 }
             }
@@ -224,7 +225,7 @@ fn parse_scope(expr: Expr) -> Result<ScopeArg> {
 
             let guild_ids = args
                 .into_iter()
-                .map(|arg| parse_string_literal(arg, "guild id"))
+                .map(parse_guild_id)
                 .collect::<Result<Vec<_>>>()?;
 
             if guild_ids.is_empty() {
@@ -238,21 +239,86 @@ fn parse_scope(expr: Expr) -> Result<ScopeArg> {
         }
         other => Err(Error::new_spanned(
             other,
-            "scope must be `global` or `guild(\"...\")`",
+            "scope must be `global` or `guild(123...)`",
         )),
     }
+}
+
+/// Parses a Discord guild snowflake from an integer or numeric string literal.
+fn parse_guild_id(expr: Expr) -> Result<u64> {
+    let (value, span) = match expr {
+        Expr::Lit(ExprLit {
+            lit: Lit::Int(value),
+            ..
+        }) => (value.base10_parse::<u64>()?, value.span()),
+        Expr::Lit(ExprLit {
+            lit: Lit::Str(value),
+            ..
+        }) => (
+            value
+                .value()
+                .parse::<u64>()
+                .map_err(|_| Error::new_spanned(&value, "guild id must be a u64 snowflake"))?,
+            value.span(),
+        ),
+        other => {
+            return Err(Error::new_spanned(
+                other,
+                "guild id must be an integer or numeric string literal",
+            ));
+        }
+    };
+
+    if value == 0 {
+        return Err(Error::new(span, "guild id must be non-zero"));
+    }
+
+    Ok(value)
 }
 
 /// Parses an array of command option specs.
 fn parse_options(expr: Expr) -> Result<Vec<CommandOptionSpec>> {
     match expr {
-        Expr::Array(array) => array
-            .elems
-            .into_iter()
-            .map(parse_option_spec)
-            .collect::<Result<Vec<_>>>(),
+        Expr::Array(array) => {
+            let options = array
+                .elems
+                .into_iter()
+                .map(parse_option_spec)
+                .collect::<Result<Vec<_>>>()?;
+            validate_option_specs(&options)?;
+            Ok(options)
+        }
         other => Err(Error::new_spanned(other, "options must be an array")),
     }
+}
+
+/// Validates Discord's ordering and uniqueness requirements for slash options.
+fn validate_option_specs(options: &[CommandOptionSpec]) -> Result<()> {
+    let mut names = HashSet::new();
+    let mut saw_optional = false;
+
+    for option in options {
+        let name = option.name.value();
+        if !names.insert(name) {
+            return Err(Error::new_spanned(
+                &option.name,
+                "slash command option names must be unique",
+            ));
+        }
+
+        if option.required {
+            if saw_optional {
+                return Err(Error::new_spanned(
+                    &option.name,
+                    "required slash command options must precede optional options",
+                ));
+            }
+        } else {
+            saw_optional = true;
+        }
+    }
+
+    Ok(())
 }
 
 /// Parses a single command option spec constructor.
@@ -359,4 +425,41 @@ fn parse_bool_literal(expr: Expr, key: &str) -> Result<bool> {
 /// Returns whether the path is exactly the provided identifier.
 fn path_is_ident(path: &Path, ident: &str) -> bool {
     path.leading_colon.is_none() && path.segments.len() == 1 && path.segments[0].ident == ident
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{CommandArgs, ScopeArg};
+
+    #[test]
+    fn parses_integer_and_string_guild_ids() {
+        let arguments = syn::parse_str::<CommandArgs>("scope = guild(42, \"43\")")
+            .expect("guild IDs should parse");
+
+        let Some(ScopeArg::Guild(guild_ids)) = arguments.scope else {
+            panic!("expected guild scope");
+        };
+
+        assert_eq!(guild_ids, [42, 43]);
+    }
+
+    #[test]
+    fn rejects_invalid_guild_ids() {
+        assert!(syn::parse_str::<CommandArgs>("scope = guild(0)").is_err());
+        assert!(syn::parse_str::<CommandArgs>("scope = guild(\"not-an-id\")").is_err());
+    }
+
+    #[test]
+    fn rejects_invalid_option_order_and_duplicate_names() {
+        assert!(
+            syn::parse_str::<CommandArgs>(
+                "options = [String(\"optional\", false), String(\"required\", true)]"
+            )
+            .is_err()
+        );
+        assert!(
+            syn::parse_str::<CommandArgs>("options = [String(\"value\"), Integer(\"value\")]")
+                .is_err()
+        );
+    }
 }

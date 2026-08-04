@@ -9,8 +9,11 @@
 
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
-/// Initializes the global tracing subscriber.
-pub fn init_logger() {
+/// Attempts to initialize a default global tracing subscriber.
+///
+/// Applications that already install a subscriber should configure tracing
+/// themselves and ignore this helper.
+pub fn try_init_logger() -> Result<(), tracing_subscriber::util::TryInitError> {
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
 
     let fmt_layer = fmt::layer()
@@ -21,5 +24,12 @@ pub fn init_logger() {
     tracing_subscriber::registry()
         .with(filter)
         .with(fmt_layer)
-        .init();
+        .try_init()
+}
+
+/// Initializes a default global tracing subscriber when one is not installed.
+///
+/// Prefer [`try_init_logger`] when initialization failures must be observed.
+pub fn init_logger() {
+    let _ = try_init_logger();
 }

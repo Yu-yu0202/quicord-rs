@@ -49,7 +49,8 @@ impl Bot {
                 .get(component.custom_id.as_str())
                 .map(RoutedHandler::Button),
 
-            ComponentType::MentionableSelectMenu
+            ComponentType::TextSelectMenu
+            | ComponentType::MentionableSelectMenu
             | ComponentType::RoleSelectMenu
             | ComponentType::UserSelectMenu
             | ComponentType::ChannelSelectMenu => self

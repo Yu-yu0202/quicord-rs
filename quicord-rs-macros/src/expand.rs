@@ -7,69 +7,60 @@
  * https://mozilla.org/MPL/2.0/.
  */
 
-use proc_macro2::Span;
 use quote::{format_ident, quote};
-use syn::{Error, ItemFn, Result};
+use syn::{Error, FnArg, ItemFn, Result, Type};
 
-use crate::args::{
-    CommandArgs, CommandOptionKind, CommandOptionSpec, EventArgs, MessageComponentsArgs, ScopeArg,
+use crate::args::{CommandOptionKind, CommandOptionSpec, ScopeArg};
+use crate::definition::{
+    CommandDefinition, CommandKind, ComponentDefinition, ContextKind, EventDefinition,
+    MessageComponentsKind,
 };
-
-/// Discriminant used while expanding a command handler.
-pub(crate) enum CommandKind {
-    /// Slash command expansion.
-    Slash,
-    /// Message context command expansion.
-    MessageContext,
-    /// User context command expansion.
-    UserContext,
-}
-
-/// Discriminant used while expanding an event handler.
-pub(crate) enum MessageComponentsKind {
-    /// Button expansion.
-    Button,
-    /// Select menu expansion.
-    SelectMenu,
-    /// Modal expansion.
-    Modal,
-}
 
 /// Validates the input and dispatches to the correct expansion routine.
 pub(crate) fn command(
-    args: CommandArgs,
+    args: crate::args::CommandArgs,
     item_fn: ItemFn,
     kind: CommandKind,
 ) -> proc_macro2::TokenStream {
-    if item_fn.sig.asyncness.is_none() {
-        return Error::new_spanned(item_fn.sig.fn_token, "command handler must be async")
-            .to_compile_error();
+    if let Err(error) = validate_handler(&item_fn, "InteractionContext", "command") {
+        return error.to_compile_error();
     }
 
-    match kind {
-        CommandKind::Slash => slash_command(args, item_fn),
-        CommandKind::MessageContext => context_command(args, item_fn, ContextKind::Message),
-        CommandKind::UserContext => context_command(args, item_fn, ContextKind::User),
+    let definition = match CommandDefinition::parse(args, kind) {
+        Ok(definition) => definition,
+        Err(error) => return error.to_compile_error(),
+    };
+
+    match definition {
+        CommandDefinition::Slash {
+            name,
+            description,
+            scope,
+            options,
+        } => slash_command(name, description, scope, options, item_fn),
+        CommandDefinition::Context { name, scope, kind } => {
+            context_command(name, scope, kind, item_fn)
+        }
     }
 }
 
 /// Validates the input and dispatches to the event handler expansion routine.
-pub(crate) fn event(args: EventArgs, item_fn: ItemFn) -> proc_macro2::TokenStream {
-    let event_type = match required(args.event_type, "event", Span::call_site()) {
-        Ok(event_type) => event_type,
-        Err(err) => return err.to_compile_error(),
+pub(crate) fn event(args: crate::args::EventArgs, item_fn: ItemFn) -> proc_macro2::TokenStream {
+    if let Err(error) = validate_handler(&item_fn, "EventContext", "event") {
+        return error.to_compile_error();
+    }
+
+    let EventDefinition { event_type, once } = match EventDefinition::parse(args) {
+        Ok(definition) => definition,
+        Err(error) => return error.to_compile_error(),
     };
-    let once = args.once.unwrap_or(false);
 
     let event_type_upper = event_type.value().to_uppercase();
     let event_type = syn::LitStr::new(&event_type_upper, event_type.span());
 
     let handler_name = item_fn.sig.ident.clone();
     let handler_fn = format_ident!("__quicord_rs_{}_event_handler", handler_name);
-    let metadata = format_ident!(
-        "__QUICORD_RS_{}_EVENT__",
-        handler_name.to_string().to_uppercase()
-    );
+    let metadata = format_ident!("__quicord_rs_{}_event_metadata", handler_name);
 
     quote! {
         #item_fn
@@ -82,6 +73,7 @@ pub(crate) fn event(args: EventArgs, item_fn: ItemFn) -> proc_macro2::TokenStrea
 
         #[quicord_rs::linkme::distributed_slice(::quicord_rs::core::event::EVENT_HANDLERS)]
         #[linkme(crate = ::quicord_rs::linkme)]
+        #[allow(non_upper_case_globals)]
         static #metadata: ::quicord_rs::core::event::EventHandlerMetadata = ::quicord_rs::core::event::EventHandlerMetadata {
             event_type: #event_type,
             handler: #handler_fn,
@@ -92,46 +84,40 @@ pub(crate) fn event(args: EventArgs, item_fn: ItemFn) -> proc_macro2::TokenStrea
 
 /// Validates the input and dispatches to the message components handler expansion routine.
 pub(crate) fn message_components(
-    args: MessageComponentsArgs,
+    args: crate::args::MessageComponentsArgs,
     item_fn: ItemFn,
     kind: MessageComponentsKind,
 ) -> proc_macro2::TokenStream {
-    if item_fn.sig.asyncness.is_none() {
-        return Error::new_spanned(
-            item_fn.sig.fn_token,
-            "message components handler must be async",
-        )
-        .to_compile_error();
+    if let Err(error) = validate_handler(&item_fn, "InteractionContext", "component") {
+        return error.to_compile_error();
     }
 
+    let definition = match ComponentDefinition::parse(args, kind) {
+        Ok(definition) => definition,
+        Err(error) => return error.to_compile_error(),
+    };
+    let ComponentDefinition { custom_id, kind } = definition;
+
     match kind {
-        MessageComponentsKind::Button => button(args, item_fn),
-        MessageComponentsKind::SelectMenu => select_menu(args, item_fn),
-        MessageComponentsKind::Modal => modal(args, item_fn),
+        MessageComponentsKind::Button => button(custom_id, item_fn),
+        MessageComponentsKind::SelectMenu => select_menu(custom_id, item_fn),
+        MessageComponentsKind::Modal => modal(custom_id, item_fn),
     }
 }
 
 /// Expands a slash command handler into a handler function and metadata entry.
-fn slash_command(args: CommandArgs, item_fn: ItemFn) -> proc_macro2::TokenStream {
-    let (name, description, scope) = match (
-        required(args.name, "name", Span::call_site()),
-        required(args.description, "description", Span::call_site()),
-        required(args.scope, "scope", Span::call_site()),
-    ) {
-        (Ok(name), Ok(description), Ok(scope)) => (name, description, scope),
-        (name, description, scope) => {
-            return combine_errors([name.err(), description.err(), scope.err()]);
-        }
-    };
-    let options = args.options.unwrap_or_default();
+fn slash_command(
+    name: syn::LitStr,
+    description: syn::LitStr,
+    scope: ScopeArg,
+    options: Vec<CommandOptionSpec>,
+    item_fn: ItemFn,
+) -> proc_macro2::TokenStream {
     let options_tokens = option_tokens(options);
 
     let command_fn = &item_fn.sig.ident;
     let handler_fn = format_ident!("__quicord_rs_{}_slash_handler", command_fn);
-    let metadata = format_ident!(
-        "__QUICORD_RS_{}_SLASH_COMMAND",
-        command_fn.to_string().to_uppercase()
-    );
+    let metadata = format_ident!("__quicord_rs_{}_slash_metadata", command_fn);
     let scope = scope_tokens(scope);
 
     quote! {
@@ -145,6 +131,7 @@ fn slash_command(args: CommandArgs, item_fn: ItemFn) -> proc_macro2::TokenStream
 
         #[quicord_rs::linkme::distributed_slice(::quicord_rs::command::slash::SLASH_COMMANDS)]
         #[linkme(crate = ::quicord_rs::linkme)]
+        #[allow(non_upper_case_globals)]
         static #metadata: ::quicord_rs::command::slash::SlashCommandMetadata =
             ::quicord_rs::command::slash::SlashCommandMetadata {
                 name: #name,
@@ -156,53 +143,20 @@ fn slash_command(args: CommandArgs, item_fn: ItemFn) -> proc_macro2::TokenStream
     }
 }
 
-/// Distinguishes the two supported context command kinds.
-enum ContextKind {
-    /// Message context command.
-    Message,
-    /// User context command.
-    User,
-}
-
 /// Expands a context command handler into a handler function and metadata entry.
 fn context_command(
-    args: CommandArgs,
-    item_fn: ItemFn,
+    name: syn::LitStr,
+    scope: ScopeArg,
     kind: ContextKind,
+    item_fn: ItemFn,
 ) -> proc_macro2::TokenStream {
-    if let Some(description) = args.description {
-        return Error::new_spanned(
-            description,
-            "context commands cannot have a description in the Discord API",
-        )
-        .to_compile_error();
-    }
-    if let Some(options) = args.options {
-        let first = options.into_iter().next().unwrap();
-        return Error::new_spanned(first.name, "context commands cannot declare options")
-            .to_compile_error();
-    }
-
-    let (name, scope) = match (
-        required(args.name, "name", Span::call_site()),
-        required(args.scope, "scope", Span::call_site()),
-    ) {
-        (Ok(name), Ok(scope)) => (name, scope),
-        (name, scope) => {
-            return combine_errors([name.err(), scope.err()]);
-        }
-    };
-
     let command_fn = &item_fn.sig.ident;
     let scope = scope_tokens(scope);
 
     match kind {
         ContextKind::Message => {
             let handler_fn = format_ident!("__quicord_rs_{}_message_context_handler", command_fn);
-            let metadata = format_ident!(
-                "__QUICORD_RS_{}_MESSAGE_CONTEXT_COMMAND",
-                command_fn.to_string().to_uppercase()
-            );
+            let metadata = format_ident!("__quicord_rs_{}_message_context_metadata", command_fn);
 
             quote! {
                 #item_fn
@@ -215,6 +169,7 @@ fn context_command(
 
                 #[quicord_rs::linkme::distributed_slice(::quicord_rs::command::context::MESSAGE_CONTEXT_COMMANDS)]
                 #[linkme(crate = ::quicord_rs::linkme)]
+                #[allow(non_upper_case_globals)]
                 static #metadata: ::quicord_rs::command::context::MessageContextCommandMetadata =
                     ::quicord_rs::command::context::MessageContextCommandMetadata {
                         name: #name,
@@ -225,10 +180,7 @@ fn context_command(
         }
         ContextKind::User => {
             let handler_fn = format_ident!("__quicord_rs_{}_user_context_handler", command_fn);
-            let metadata = format_ident!(
-                "__QUICORD_RS_{}_USER_CONTEXT_COMMAND",
-                command_fn.to_string().to_uppercase()
-            );
+            let metadata = format_ident!("__quicord_rs_{}_user_context_metadata", command_fn);
 
             quote! {
                 #item_fn
@@ -241,6 +193,7 @@ fn context_command(
 
                 #[quicord_rs::linkme::distributed_slice(::quicord_rs::command::context::USER_CONTEXT_COMMANDS)]
                 #[linkme(crate = ::quicord_rs::linkme)]
+                #[allow(non_upper_case_globals)]
                 static #metadata: ::quicord_rs::command::context::UserContextCommandMetadata =
                     ::quicord_rs::command::context::UserContextCommandMetadata {
                         name: #name,
@@ -252,18 +205,10 @@ fn context_command(
     }
 }
 
-fn button(args: MessageComponentsArgs, item_fn: ItemFn) -> proc_macro2::TokenStream {
-    let custom_id = match required(args.custom_id, "custom_id", Span::call_site()) {
-        Ok(custom_id) => custom_id,
-        Err(err) => return err.to_compile_error(),
-    };
-
+fn button(custom_id: syn::LitStr, item_fn: ItemFn) -> proc_macro2::TokenStream {
     let handler_name = item_fn.sig.ident.clone();
     let handler_fn = format_ident!("__quicord_rs_{}_button_handler", handler_name);
-    let metadata = format_ident!(
-        "__QUICORD_RS_{}_BUTTON__",
-        handler_name.to_string().to_uppercase()
-    );
+    let metadata = format_ident!("__quicord_rs_{}_button_metadata", handler_name);
 
     quote! {
         #item_fn
@@ -276,6 +221,7 @@ fn button(args: MessageComponentsArgs, item_fn: ItemFn) -> proc_macro2::TokenStr
 
         #[quicord_rs::linkme::distributed_slice(::quicord_rs::command::message_component::BUTTONS)]
         #[linkme(crate = ::quicord_rs::linkme)]
+        #[allow(non_upper_case_globals)]
         static #metadata: ::quicord_rs::command::message_component::ButtonMetadata =
             ::quicord_rs::command::message_component::ButtonMetadata {
                 custom_id: #custom_id,
@@ -284,18 +230,10 @@ fn button(args: MessageComponentsArgs, item_fn: ItemFn) -> proc_macro2::TokenStr
     }
 }
 
-fn select_menu(args: MessageComponentsArgs, item_fn: ItemFn) -> proc_macro2::TokenStream {
-    let custom_id = match required(args.custom_id, "custom_id", Span::call_site()) {
-        Ok(custom_id) => custom_id,
-        Err(err) => return err.to_compile_error(),
-    };
-
+fn select_menu(custom_id: syn::LitStr, item_fn: ItemFn) -> proc_macro2::TokenStream {
     let handler_name = item_fn.sig.ident.clone();
     let handler_fn = format_ident!("__quicord_rs_{}_select_menu_handler", handler_name);
-    let metadata = format_ident!(
-        "__QUICORD_RS_{}_SELECT_MENU__",
-        handler_name.to_string().to_uppercase()
-    );
+    let metadata = format_ident!("__quicord_rs_{}_select_menu_metadata", handler_name);
 
     quote! {
         #item_fn
@@ -308,6 +246,7 @@ fn select_menu(args: MessageComponentsArgs, item_fn: ItemFn) -> proc_macro2::Tok
 
         #[quicord_rs::linkme::distributed_slice(::quicord_rs::command::message_component::SELECT_MENUS)]
         #[linkme(crate = ::quicord_rs::linkme)]
+        #[allow(non_upper_case_globals)]
         static #metadata: ::quicord_rs::command::message_component::SelectMenuMetadata =
             ::quicord_rs::command::message_component::SelectMenuMetadata {
                 custom_id: #custom_id,
@@ -316,18 +255,10 @@ fn select_menu(args: MessageComponentsArgs, item_fn: ItemFn) -> proc_macro2::Tok
     }
 }
 
-fn modal(args: MessageComponentsArgs, item_fn: ItemFn) -> proc_macro2::TokenStream {
-    let custom_id = match required(args.custom_id, "custom_id", Span::call_site()) {
-        Ok(custom_id) => custom_id,
-        Err(err) => return err.to_compile_error(),
-    };
-
+fn modal(custom_id: syn::LitStr, item_fn: ItemFn) -> proc_macro2::TokenStream {
     let handler_name = item_fn.sig.ident.clone();
     let handler_fn = format_ident!("__quicord_rs_{}_modal_handler", handler_name);
-    let metadata = format_ident!(
-        "__QUICORD_RS_{}_MODAL__",
-        handler_name.to_string().to_uppercase()
-    );
+    let metadata = format_ident!("__quicord_rs_{}_modal_metadata", handler_name);
 
     quote! {
         #item_fn
@@ -340,6 +271,7 @@ fn modal(args: MessageComponentsArgs, item_fn: ItemFn) -> proc_macro2::TokenStre
 
         #[quicord_rs::linkme::distributed_slice(::quicord_rs::command::modal::MODALS)]
         #[linkme(crate = ::quicord_rs::linkme)]
+        #[allow(non_upper_case_globals)]
         static #metadata: ::quicord_rs::command::modal::ModalMetadata =
             ::quicord_rs::command::modal::ModalMetadata {
                 custom_id: #custom_id,
@@ -348,9 +280,51 @@ fn modal(args: MessageComponentsArgs, item_fn: ItemFn) -> proc_macro2::TokenStre
     }
 }
 
-/// Emits a missing-attribute error for a required field.
-fn required<T>(value: Option<T>, key: &str, span: Span) -> Result<T> {
-    value.ok_or_else(|| Error::new(span, format!("missing `{key}` attribute")))
+/// Checks the handler shape before generating a wrapper that invokes it.
+fn validate_handler(item_fn: &ItemFn, context_name: &str, handler_kind: &str) -> Result<()> {
+    if item_fn.sig.asyncness.is_none() {
+        return Err(Error::new_spanned(
+            item_fn.sig.fn_token,
+            format!("{handler_kind} handler must be async"),
+        ));
+    }
+
+    if item_fn.sig.inputs.len() != 1 {
+        return Err(Error::new_spanned(
+            &item_fn.sig.inputs,
+            format!("{handler_kind} handler must accept exactly one {context_name} argument"),
+        ));
+    }
+
+    let Some(FnArg::Typed(argument)) = item_fn.sig.inputs.first() else {
+        return Err(Error::new_spanned(
+            &item_fn.sig.inputs,
+            format!("{handler_kind} handler must accept a {context_name} argument"),
+        ));
+    };
+
+    let Type::Path(path) = argument.ty.as_ref() else {
+        return Err(Error::new_spanned(
+            &argument.ty,
+            format!("{handler_kind} handler argument must be {context_name}"),
+        ));
+    };
+
+    if path.qself.is_some()
+        || path
+            .path
+            .segments
+            .last()
+            .map(|segment| segment.ident != context_name)
+            != Some(false)
+    {
+        return Err(Error::new_spanned(
+            &argument.ty,
+            format!("{handler_kind} handler argument must be {context_name}"),
+        ));
+    }
+
+    Ok(())
 }
 
 /// Converts parsed scope information into generated tokens.
@@ -360,7 +334,9 @@ fn scope_tokens(scope: ScopeArg) -> proc_macro2::TokenStream {
             ::quicord_rs::command::scope::CommandScope::Global
         },
         ScopeArg::Guild(guild_ids) => quote! {
-            ::quicord_rs::command::scope::CommandScope::Guild(&[#(#guild_ids),*])
+            ::quicord_rs::command::scope::CommandScope::Guild(&[
+                #(::quicord_rs::twilight_model::id::Id::new(#guild_ids)),*
+            ])
         },
     }
 }
@@ -421,21 +397,4 @@ fn option_kind_tokens(kind: CommandOptionKind) -> proc_macro2::TokenStream {
             quote!(::quicord_rs::command::slash::CommandOptionType::User)
         }
     }
-}
-
-/// Combines multiple parser errors into a single compile error.
-fn combine_errors(errors: impl IntoIterator<Item = Option<Error>>) -> proc_macro2::TokenStream {
-    let mut combined: Option<Error> = None;
-
-    for error in errors.into_iter().flatten() {
-        if let Some(combined) = &mut combined {
-            combined.combine(error);
-        } else {
-            combined = Some(error);
-        }
-    }
-
-    combined
-        .map(|error| error.to_compile_error())
-        .unwrap_or_default()
 }

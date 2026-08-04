@@ -19,8 +19,8 @@ pub struct StaticRouter<K: 'static + Hash + Eq, V: 'static> {
 }
 
 impl<K: 'static + Hash + Eq, V: 'static> StaticRouter<K, V> {
-    /// Builds a router from a set of static items and a key extractor.
-    pub fn new<I>(items: I, key_extractor: fn(&'static V) -> K) -> Self
+    /// Builds a router from static items, rejecting duplicate keys.
+    pub fn try_new<I>(items: I, key_extractor: fn(&'static V) -> K) -> Result<Self, K>
     where
         I: IntoIterator<Item = &'static V>,
     {
@@ -33,10 +33,13 @@ impl<K: 'static + Hash + Eq, V: 'static> StaticRouter<K, V> {
 
         for item in items {
             let key = key_extractor(item);
+            if table.contains_key(&key) {
+                return Err(key);
+            }
             table.insert(key, item);
         }
 
-        Self { table }
+        Ok(Self { table })
     }
 
     /// Looks up an item by key.
@@ -46,5 +49,22 @@ impl<K: 'static + Hash + Eq, V: 'static> StaticRouter<K, V> {
         Q: Hash + Eq + ?Sized,
     {
         self.table.get(key).copied()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::StaticRouter;
+
+    #[test]
+    fn rejects_duplicate_keys() {
+        static ITEMS: [&str; 2] = ["first", "second"];
+
+        let duplicate = match StaticRouter::try_new(ITEMS.iter(), |_| "same") {
+            Ok(_) => panic!("duplicate keys must be rejected"),
+            Err(duplicate) => duplicate,
+        };
+
+        assert_eq!(duplicate, "same");
     }
 }

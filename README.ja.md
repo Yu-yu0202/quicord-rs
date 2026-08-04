@@ -29,7 +29,7 @@
 ```rust
 use quicord_rs::{macros::{slash_command}, BotBuilder, InteractionContext};
 
-#[slash_command(name = "ping", description = "Replies with Pong!")]
+#[slash_command(name = "ping", description = "Replies with Pong!", scope = global)]
 async fn ping(ctx: InteractionContext) -> anyhow::Result<()> {
     ctx.reply("Pong!").await?;
     Ok(())

@@ -9,6 +9,7 @@
 
 use crate::builder::button::ButtonBuilder;
 use crate::builder::text_input::TextInputBuilder;
+use crate::builder::{push_item, set_items};
 use crate::core::interaction::r#trait::IntoResponse;
 use twilight_model::application::command::CommandOptionChoice;
 use twilight_model::channel::message::component::ActionRow;
@@ -52,13 +53,12 @@ impl ResponseBuilder {
     }
 
     pub fn attachments(mut self, attachments: impl Into<Vec<Attachment>>) -> Self {
-        self.0.attachments = Some(attachments.into());
+        set_items(&mut self.0.attachments, attachments.into());
         self
     }
 
     pub fn attachment(mut self, attachment: impl Into<Attachment>) -> Self {
-        let attachments = self.0.attachments.get_or_insert_with(Vec::new);
-        attachments.push(attachment.into());
+        push_item(&mut self.0.attachments, attachment.into());
         self
     }
 
@@ -66,13 +66,12 @@ impl ResponseBuilder {
         mut self,
         choices: impl IntoIterator<Item = impl Into<CommandOptionChoice>>,
     ) -> Self {
-        self.0.choices = Some(choices.into_iter().map(|x| x.into()).collect());
+        set_items(&mut self.0.choices, choices.into_iter().map(Into::into));
         self
     }
 
     pub fn choice(mut self, choice: impl Into<CommandOptionChoice>) -> Self {
-        let choices = self.0.choices.get_or_insert_with(Vec::new);
-        choices.push(choice.into());
+        push_item(&mut self.0.choices, choice.into());
         self
     }
 
@@ -80,13 +79,15 @@ impl ResponseBuilder {
         mut self,
         components: impl IntoIterator<Item = impl Into<Component>>,
     ) -> Self {
-        self.0.components = Some(components.into_iter().map(|x| x.into()).collect());
+        set_items(
+            &mut self.0.components,
+            components.into_iter().map(Into::into),
+        );
         self
     }
 
     pub fn component(mut self, component: impl Into<Component>) -> Self {
-        let components = self.0.components.get_or_insert_with(Vec::new);
-        components.push(component.into());
+        push_item(&mut self.0.components, component.into());
         self
     }
 
@@ -101,13 +102,12 @@ impl ResponseBuilder {
     }
 
     pub fn embeds(mut self, embeds: impl IntoIterator<Item = impl Into<Embed>>) -> Self {
-        self.0.embeds = Some(embeds.into_iter().map(|x| x.into()).collect());
+        set_items(&mut self.0.embeds, embeds.into_iter().map(Into::into));
         self
     }
 
     pub fn embed(mut self, embed: impl Into<Embed>) -> Self {
-        let embeds = self.0.embeds.get_or_insert_with(Vec::new);
-        embeds.push(embed.into());
+        push_item(&mut self.0.embeds, embed.into());
         self
     }
 
@@ -162,10 +162,10 @@ impl ResponseBuilder {
     }
 
     fn push_action_row_component(&mut self, component: impl Into<ActionRow>) {
-        self.0
-            .components
-            .get_or_insert_with(Vec::new)
-            .push(component.into().into());
+        push_item(
+            &mut self.0.components,
+            Component::ActionRow(component.into()),
+        );
     }
 }
 

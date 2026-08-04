@@ -9,6 +9,8 @@
 
 //! Core runtime components for bot execution and interaction handling.
 
+mod context;
+
 /// Bot construction, routing, and event loop management.
 pub mod client;
 /// Gateway event handler metadata.
@@ -19,7 +21,10 @@ pub mod interaction;
 pub mod storage;
 
 /// Primary bot runtime type.
-pub use client::{Bot, BotBuilder, BotBuilderStorage};
+pub use client::{
+    Bot, BotBuilder, BotBuilderStorage, BotTask, GatewayRetryPolicy, Intents, ShardId,
+    TaskShutdownPolicy,
+};
 /// Event context passed to event handlers.
 pub use event::EventContext;
 /// Context passed to interaction handlers.

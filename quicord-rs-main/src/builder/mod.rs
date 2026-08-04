@@ -14,3 +14,15 @@ pub mod embed;
 pub mod modal;
 pub mod response;
 pub mod text_input;
+
+pub(crate) fn set_items<T>(slot: &mut Option<Vec<T>>, items: impl IntoIterator<Item = T>) {
+    *slot = Some(items.into_iter().collect());
+}
+
+pub(crate) fn push_item<T>(slot: &mut Option<Vec<T>>, item: T) {
+    slot.get_or_insert_with(Vec::new).push(item);
+}
+
+pub(crate) fn push_items<T>(slot: &mut Option<Vec<T>>, items: impl IntoIterator<Item = T>) {
+    slot.get_or_insert_with(Vec::new).extend(items);
+}
